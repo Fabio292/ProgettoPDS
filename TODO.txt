@@ -3,3 +3,4 @@ M: Velocizzare la generazione dell'xml magari con dei thread paralleli
 M: Gestire gli eventi del FS watcher
 
 CIAO DANIEL	
+C1a0 FaB10!!!11
