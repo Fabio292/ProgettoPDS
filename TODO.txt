@@ -1,0 +1,3 @@
+M: Gestire tuuuutte le eccezioni
+M: Velocizzare la generazione dell'xml magari con dei thread paralleli
+M: Gestire gli eventi del FS watcher

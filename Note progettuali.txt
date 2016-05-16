@@ -1,0 +1,150 @@
+https://master-gentile.visualstudio.com
+https://public.etherpad-mozilla.org/p/varmuskopio
+https://docs.google.com/document/d/1In780BTdozt-ZfIPfkoEx3gA0q1Ak5nzKT7eNRY08NQ/edit
+
+
+******Varmuuskopio******
+
+CLIENT:
+1) Crea la strutura dati 
+    -directory
+        -file1 - md5 - timestamp
+        -file2 - md5 - timestamp
+        -directory2
+            -file 3 - md5 - timestamp
+            -....
+2)invia i metadati al server e attende la risposta
+3)Ricevuta la risposta effetuta le operazioni
+-----------------------------------------------------------------------------------------------------
+
+SERVER:
+1)Riceve la struttura dati dal client
+        
+        //TO DO analizzare il caso prima connessione
+        
+2)Confronto gli XML con l'ultima versione salvata
+    Per ogni entry:
+        -File uguali -> nulla da fare
+        -File diversi
+            a)File presente su C, ma non su S -> creazione di un nuovo file
+            b)File presente su C e S, md5 diverso -> file modificato (tengo il più recente)
+            c)File presente solo su S -> implica cancellazione da parte del C
+
+1 Tabella per le versioni
+    (idUtente, idVersione, pathFile, META, pathLocale)
+    
+pathFile:
+    C:/Desktop/condivisa/documenti/file.xls
+pathLocale:
+    C:/dropbox/utente1/v10_09_2015/documenti/file.xls    
+      
+3)S manda la risposta a C con le operazioni da fare
+  specifica l'elenco dei file da inviare (ovvero quelli nuovi oppure quelli modificati)
+
+-----------------------------------------------------------------------------------------------------
+
+3 NUCLEI CENTRALI   
+A) trasferimento dati e flusso di controllo
+B) analisi comparativa tra versioni e conseguente aggiornamento
+C) interfaccia utente
+
+-----------------------------------------------------------------------------------------------------
+
+http://codebeautify.org/xmlviewer
+<dir name="eBooks">
+  <file name="Edulinq.pdf" md5="abcde12313341" date="2015-09-14- 10:50:18"/>
+  <file name="MCTS 70-516 Accessing Data with Microsoft NET Framework 4.pdf" />
+  <dir name="Silverlight">
+    <file name="Sams - Silverlight 4 Unleashed.pdf" />
+    <file name="Silverlight 2 Unleashed.pdf" />
+    <file name="WhatsNewInSilverlight4.pdf" />
+  </dir>
+  <dir name="Windows Phone">
+    <file name="11180349_Building_Windows_Phone_Apps_-_A_Developers_Guide_v7_NoCover (1).pdf" />
+    <file name="Programming Windows Phone 7.pdf" />
+  </dir>
+  <dir name="WPF">
+    <file name="Building Enterprise Applications with WPF and the MVVM Pattern (pdf).pdf" />
+    <file name="Prism4.pdf" />
+    <file name="WPF Binding CheatSheet.pdf" />
+  </dir>
+</dir>
+
+-----------------------------------------------------------------------------------------------------
+OPTIMAL ALGORITHM
+CBO
+
+
+Backup C-->S
+1)C si autentica automaticamente
+    //TODO Pacchetto login
+2)S risponde a C
+    //TODO Pacchetto login_response (ok, "errore")
+3)C genera versione.xml
+4)C inviare versione.xml
+    //TODO Pacchetto di invio versione.xml
+5)S interpreta il versione.xml (trasformandolo in albero)      
+6)S confronta il nuovo versione.xml con la versione in memoria più recente 
+    (che può esserci o meno)
+7)S invia a C l'elenco (potrebbe essere anche nullo) dei file da "aggiornare"
+    //TODO protocollo invio richiesta trasferimento file
+8)C invia i file richiesti
+    //TODO protocollo invio file 
+9)Ogni X minuti -> 3)
+
+
+Ripristino S-->C
+
+
+-----------------------------------------------------------------------------------------------------
+se vuoi sapere di più su c# questo ebook è decisamente esplicativo
+http://opac.biblio.polito.it/F/?func=direct&doc_number=000346879&local_base=PTOW
+puoi accedere da dentro rete poli, oppure se ti registri a digProxy http://www.biblio.polito.it/biblioteca_digitale/dig_proxy.html
+------------------------------------------------------------------------------------------------------
+
+È tempo di formalizzare!
+
+classe message_varmuskoopio
+-msg[3]
+-payload_length[4]
+-payload
+
+0-----2------------6---------------N
+| CMD | PAYLOAD_SZ |    PAYLOAD    |
++----------------------------------+
+
+
+Tipi di messaggi:
+
+    -LOG|dimensione.lunghezza_username.username.md5_pwd
+
+
+    -GET|lunghezza_filename.filename
+
+    richiede il file i-esimo --> GETnomefile 
+
+
+    -PUT|lunghezza_filename.filename.lunghezza_file.file
+
+    invia il file i-esimo --> Client: (PUT)|(Dimensione payload)|(nargi.jpeg|dimensione|contenuto)
+
+     così sono sempre 7 caratteri
+
+
+    -XML|dimensioneXML.documentoXML
+
+------------------------------------------------------------------------------------------------------
+
+DB
+
+Tabella utenti
+	-ID
+	-Username
+	-Password
+
+CREATE TABLE 'Utenti' ( 
+ 'Username'  TEXT NOT NULL UNIQUE  ,
+ 'Password'  TEXT NOT NULL ,
+ 'UID'  INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT 
+ );
+

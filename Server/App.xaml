@@ -1,0 +1,33 @@
+﻿<Application x:Class="Server.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:Server"
+             StartupUri="MainWindow.xaml">
+    <!-- StartupUri="MainWindow.xaml"> -->
+    <Application.Resources>
+
+
+        <Style x:Key="{x:Static ToolBar.SeparatorStyleKey}" TargetType="{x:Type Separator}">
+            <Setter Property="Margin" Value="0,0,0,0"/>
+            <Setter Property="Focusable" Value="false"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type Separator}">
+                        <Border 
+                            BorderThickness="1" 
+                            Background="White" 
+                            Height="auto" 
+                            Width="auto"
+                            SnapsToDevicePixels="true">
+                            <Border.BorderBrush>
+                                <SolidColorBrush Color="{DynamicResource {x:Static SystemColors.ActiveBorderColorKey}}"/>
+                            </Border.BorderBrush>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+
+    </Application.Resources>
+</Application>
