@@ -138,9 +138,9 @@ Tipi di messaggi:
 DB
 
 Tabella utenti
-	-ID
-	-Username
-	-Password
+    -ID
+    -Username
+    -Password
 
 CREATE TABLE 'Utenti' ( 
  'Username'  TEXT NOT NULL UNIQUE  ,
