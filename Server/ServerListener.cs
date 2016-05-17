@@ -5,6 +5,7 @@ using System.Net.Sockets;
 using System.Threading;
 using System.IO;
 using System.Diagnostics;
+using System.Collections.Generic;
 
 namespace Server
 {
@@ -32,7 +33,7 @@ namespace Server
             // Start listening for client requests.
             serverListener.Start();
             Logger.Info("Server creato");
-            
+
         }
 
         public void Shutdown()
@@ -58,7 +59,7 @@ namespace Server
 
                     // Gestisco il client in un thread separato
                     Thread thread = new Thread(() => serveClientSync(client, ct));
-                    thread.Start();                    
+                    thread.Start();
 
                 }
             }
@@ -84,7 +85,7 @@ namespace Server
             // Ricevo il primo comando
             Command k = Utilis.GetCmdSync(client);
             Logger.Debug("il comando ricevuto dal server e':\nCOMANDO: " + k.kmd + "\nPAYLOAD: " + k.Payload + "\nPAYLOADLENGTH: " + k.PayloadLength);
-            
+
             if (k == null)
             {
                 Logger.Error("Aspettavo un comando, ricevuto nulla");
@@ -112,7 +113,7 @@ namespace Server
 
                     default:
                         ServerListener.sendError(client, ErrorCode.unexpectedMessageType);
-                        throw  new Exception("Mi aspettavo (Login|registration) Ricevuto " + Utilis.Cmd2String(k.kmd));
+                        throw new Exception("Mi aspettavo (Login|registration) Ricevuto " + Utilis.Cmd2String(k.kmd));
                 }
 
                 // Se arrivo a questo punto ho effettuato correttamente il login               
@@ -165,10 +166,10 @@ namespace Server
                 }
 
             }
-            catch(MyException e)
+            catch (MyException e)
             {
                 // Eccezione che ho lanciato io, devo solo loggare
-                Logger.Error("[" + e.FileName+ "(" + e.LineNumber + ")]: " + e.Message);
+                Logger.Error("[" + e.FileName + "(" + e.LineNumber + ")]: " + e.Message);
             }
             catch (Exception e) // Eccezione non gestita, cerco di recuperare il metodo e la linea 
             {
@@ -186,7 +187,7 @@ namespace Server
                 // TODO chiudo la sync? altre cose? boh!
                 client.Close();
             }
-            
+
         }
 
 
@@ -241,7 +242,7 @@ namespace Server
                 using (SQLiteConnection connection = new SQLiteConnection(DB.GetConnectionString()))
                 {
                     connection.Open();
-                    
+
                     using (SQLiteCommand sqlCmd = connection.CreateCommand())
                     {
                         // Cerco l'utente con le credenziali passate
@@ -256,7 +257,7 @@ namespace Server
                             ServerListener.sendError(client, ErrorCode.credentialsNotValid);
                             throw new Exception("tentato login con credenziali non valide <" + credentials.Username + "><" + credentials.Password + ">");
                         }
-                    }                  
+                    }
                 }
 
                 usn = credentials.Username;
@@ -273,7 +274,7 @@ namespace Server
                 StackTrace st = new StackTrace(e, true);
                 StackFrame sf = Utilis.GetFirstValidFrame(st);
             }
-            
+
             return true;
         }
 
@@ -303,7 +304,7 @@ namespace Server
                     throw new MyException(e.Message, Path.GetFileName(sf.GetFileName()), sf.GetFileLineNumber());
                 }
                 #endregion
-                
+
                 #region Validazione Input
                 // Controllo di validità su username e pwd
                 int usnLen = credentials.Username.Length;
@@ -428,39 +429,136 @@ namespace Server
         {
             FileNumCommand numeroFiles = new FileNumCommand(Utilis.GetCmdSync(client));
             Logger.Info("il numero di files che devo ricevere e': " + numeroFiles.NumFiles);
+            int latestVersionId = 0;
+            List<String> listaElementiUltimaVersioneServer = new List<String>();
 
-
-            for (int i = 0; i < numeroFiles.NumFiles; i++)
+            ///query al DB, estraggo elenco files ultima versione e memorizzo i clientPath in una lista
+            using (SQLiteConnection connection = new SQLiteConnection(DB.GetConnectionString()))
             {
-                FileInfoCommand info = new FileInfoCommand(Utilis.GetCmdSync(client));
-                // TODO i file andranno poi messi con un nome generato a caso (per le versioni)
-                // e divisi per utente
-                string destPath = Utilis.RelativeToAbsPath(info.RelFilePath, Constants.TestPathServer); 
-                
+                connection.Open();
+                String path;
 
-                // Creo l'albero di cartelle se necessario
-                Directory.CreateDirectory(Path.GetDirectoryName(destPath));
-                
-                // Ricevo e salvo il file
-                Utilis.GetFile(client, destPath, info.FileSize);
+                using (SQLiteTransaction tr = connection.BeginTransaction())
+                {
+                    ///memorizzo il numero di versione raggiunto
+                    using (SQLiteCommand sqlCmd = connection.CreateCommand())
+                    {
 
-                // Modifico i metadati rendendoli uguali a quelli del client
-                File.SetCreationTime(destPath, info.LastModTime);
-                File.SetLastWriteTime(destPath, info.LastModTime);
-                
+                        sqlCmd.CommandText = @"SELECT MAX(VersionID) FROM Versioni "; WHERE UID
 
-                //Utilis.GetFile(client, Constants.TestPathServer + parti[0], Int32.Parse(parti[1]));
+                        try
+                        {
+                            ///la conversione fa partire un NULLPOINTEREXCEPTION se l'oggetto sqlCmd è null
+                            latestVersionId = (int)sqlCmd.ExecuteScalar();
+                        }
+                        catch (Exception e)
+                        {
+                            ///TODO basta gestire l'eccezione in questo modo? non credo
+                            Logger.Error("SERVER->getUpdates La query per trovare l'ID dell'ultima versione non ha dato risultati" + e.ToString());
+                        }
 
-                Logger.Info(i + ") Ho ricevuto il file: " + destPath);
+                    }
+
+                    using (SQLiteCommand sqlCmd = connection.CreateCommand())
+                    {
+                        sqlCmd.CommandText = @"SELECT PathClient FROM Versioni WHERE VersionID = @_latestV);"; aggiungere UID nella where
+                        sqlCmd.Parameters.AddWithValue("@_latestV", latestVersionId);
+
+                        SQLiteDataReader reader = sqlCmd.ExecuteReader();
+
+                        if (reader.HasRows)
+                        {
+                            while (reader.Read())
+                            {
+                                ///popolo la lista dei files dell'ultima versione
+                                listaElementiUltimaVersioneServer.Add(reader.GetString(0));
+                                Logger.log("Aggiunto elemento " + reader.GetString(0) + "alla lista listaElementiUltimaVersioneServer");
+                            }
+                        }
+                        else
+                        {
+                            Logger.Error("SERVER->getUpdates Impossibile ottenere l'elenco dei files dell'ultima versione");
+                        }
+                        reader.Close();
+                    }
+
+                    latestVersionId++;
+
+                    for (int i = 0; i < numeroFiles.NumFiles; i++)
+                    {
+                        FileInfoCommand info = new FileInfoCommand(Utilis.GetCmdSync(client));
+                        // TODO i file andranno poi messi con un nome generato a caso (per le versioni)
+                        // e divisi per utente
+                        string destPath = Utilis.RelativeToAbsPath(info.RelFilePath, Constants.TestPathServer);
+
+                        // Creo l'albero di cartelle se necessario
+                        Directory.CreateDirectory(Path.GetDirectoryName(destPath));
+
+                        // Ricevo e salvo il file
+                        Utilis.GetFile(client, destPath, info.FileSize);
+
+                        // Modifico i metadati rendendoli uguali a quelli del client
+                        File.SetCreationTime(destPath, info.LastModTime);
+                        File.SetLastWriteTime(destPath, info.LastModTime);
+
+                        //rimuovo dalla lista: se l'elemento non è presente nella lista la funzione ritorna false
+                        listaElementiUltimaVersioneServer.Remove(info.RelFilePath);
+                            //file correttamente rimosso, significa che il file è stato aggiornato -> aggiorno l'entry nel DB
+                            using (SQLiteCommand sqlCmd = connection.CreateCommand())
+                            {
+                                sqlCmd.CommandText = @"INSERT Versioni (UID, VersionID, PathClient, MD5, LastModTime, Size, PathServer, LastVersion, Deleted)
+                                                        VALUES (@_UID ,@_latestV, @_pathClient, ,@_lastModTime, @_size, @_pathServer, true, false)";
+
+                                sqlCmd.Parameters.AddWithValue("@_UID", );
+                                sqlCmd.Parameters.AddWithValue("@_latestV", latestVersionId);
+                                sqlCmd.Parameters.AddWithValue("@_pathClient", info.RelFilePath);
+                                ///TODO gestire md5
+                                sqlCmd.Parameters.AddWithValue("@_md5", Utilis.MD5sum(info.RelFilePath));
+                                sqlCmd.Parameters.AddWithValue("@_lastModTime", info.LastModTime);
+                                sqlCmd.Parameters.AddWithValue("@_size", info.FileSize);
+                                sqlCmd.Parameters.AddWithValue("@_pathServer", destPath);
+
+
+                                int nUpdated = sqlCmd.ExecuteNonQuery();
+                                if (nUpdated != 1)
+                                    throw new Exception("Impossibile aggiungere il nuovo file " + info + " nel DB");
+
+                            }
+
+                        //Utilis.GetFile(client, Constants.TestPathServer + parti[0], Int32.Parse(parti[1]));
+                        Logger.Info("*****Path relativo: " + info.RelFilePath);
+                        Logger.Info(i + ") Ho ricevuto il file: " + destPath);
+                    }
+
+                    ///aggiorno il valore del VersionID per tutti i files che non sono stati modificati
+                    foreach (String file in listaElementiUltimaVersioneServer)
+                    {
+                           using (SQLiteCommand sqlCmd = connection.CreateCommand())
+                            {
+                                sqlCmd.CommandText = @"UPDATE Versioni 
+                                                SET VersionID = @_latestV  
+                                                WHERE PathClient=@_pathClient"; WHERE UID
+                               
+                                sqlCmd.Parameters.AddWithValue("@_latestV", latestVersionId);
+                                sqlCmd.Parameters.AddWithValue("@_pathClient", file);
+                                int nUpdated = sqlCmd.ExecuteNonQuery();
+                                if (nUpdated != 1)
+                                    throw new Exception("Impossibile aggiornare il VersionID del file " + file + " nel DB");
+
+                            }
+                         
+                    }
+
+                    tr.Commit();
+
+                }
+
             }
 
         }
 
-
-
     }
 }
-
 
 
 
