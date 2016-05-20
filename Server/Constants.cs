@@ -152,7 +152,8 @@ namespace Server
         unexpectedMessageType,
         usernameAlreadyPresent,
         usernameLengthNotValid,
-        passwordLengthNotValid
+        passwordLengthNotValid,
+        userAlreadyInSynch
 
     }
 }
