@@ -32,7 +32,7 @@ namespace Server
         /// <summary>
         /// Percorso di test
         /// </summary>
-        public const string PathServerFile = @"D:\PDSCartellaPDS\ClientBackup";
+        public const string PathServerFile = @"D:\PDSCartellaPDS\ServerBackup";
 
         /// <summary>
         /// Percorso del file del db

@@ -12,7 +12,6 @@ namespace Server
     class ServerListener
     {
         private TcpListener serverListener = null;
-        XmlManager XmlManager;
 
         // TODO fare un singleton
         public ServerListener()
@@ -141,7 +140,7 @@ namespace Server
                         case CmdType.getXmlDigest:
                             ///invio l'md5 dell'XML dell'ultima versione della cartella
                             ServerListener.sendXmlDigest(client, userID);
-                            Logger.Info("ho inviato l'md5 dell'Xml richiesto:" + XmlManager.XMLDigest());
+                            Logger.Info("ho inviato l'md5 dell'Xml richiesto:");
                             break;
 
                         case CmdType.getXML:
@@ -212,14 +211,15 @@ namespace Server
                 {
                     transaction.Rollback();
                     transaction.Dispose();
+                    transaction = null;
                 }
 
                 if (conn != null)
                 {
                     conn.Close();
                     conn.Dispose();
+                    conn = null;
                 }              
-
 
             }
             finally
@@ -291,39 +291,43 @@ namespace Server
                 using (SQLiteConnection connection = new SQLiteConnection(DB.GetConnectionString()))
                 {
                     connection.Open();
-
-                    using (SQLiteCommand sqlCmd = connection.CreateCommand())
+                    using (SQLiteTransaction tr = connection.BeginTransaction())
                     {
-                        // Cerco l'utente con le credenziali passate
-                        string passMd5 = Utilis.Md5String(credentials.Password);
-                        sqlCmd.CommandText = @"SELECT * FROM Utenti WHERE Username=@_username AND Password=@_password";
-                        sqlCmd.Parameters.AddWithValue("@_username", credentials.Username);
-                        sqlCmd.Parameters.AddWithValue("@_password", passMd5);
 
-                        SQLiteDataReader reader = sqlCmd.ExecuteReader();
-                        if (reader.HasRows == false)
+
+                        using (SQLiteCommand sqlCmd = connection.CreateCommand())
                         {
-                            ServerListener.sendError(client, ErrorCode.credentialsNotValid);
-                            throw new Exception("tentato login con credenziali non valide <" + credentials.Username + "><" + credentials.Password + ">");
-                        }
-                    }
+                            // Cerco l'utente con le credenziali passate
+                            string passMd5 = Utilis.Md5String(credentials.Password);
+                            sqlCmd.CommandText = @"SELECT * FROM Utenti WHERE Username=@_username AND Password=@_password";
+                            sqlCmd.Parameters.AddWithValue("@_username", credentials.Username);
+                            sqlCmd.Parameters.AddWithValue("@_password", passMd5);
 
-                    // Cerco l'ID dell'utente
-                    using (SQLiteCommand sqlCmd = connection.CreateCommand())
-                    {
-                        sqlCmd.CommandText = @"SELECT UID FROM Utenti WHERE Username=@_username";
-                        sqlCmd.Parameters.AddWithValue("@_username", credentials.Username);
-
-                        SQLiteDataReader reader = sqlCmd.ExecuteReader();
-                        if (reader.HasRows == false)
-                        {
-                            ServerListener.sendError(client, ErrorCode.credentialsNotValid);
-                            throw new Exception("tentato login con credenziali non valide <" + credentials.Username + "><" + credentials.Password + ">");
+                            SQLiteDataReader reader = sqlCmd.ExecuteReader();
+                            if (reader.HasRows == false)
+                            {
+                                ServerListener.sendError(client, ErrorCode.credentialsNotValid);
+                                throw new Exception("tentato login con credenziali non valide <" + credentials.Username + "><" + credentials.Password + ">");
+                            }
                         }
 
-                        userID = (int)sqlCmd.ExecuteScalar();
+                        // Cerco l'ID dell'utente
+                        using (SQLiteCommand sqlCmd = connection.CreateCommand())
+                        {
+                            sqlCmd.CommandText = @"SELECT UID FROM Utenti WHERE Username=@_username";
+                            sqlCmd.Parameters.AddWithValue("@_username", credentials.Username);
+
+                            //SQLiteDataReader reader = sqlCmd.ExecuteReader();
+                            //if (reader.HasRows == false)
+                            //{
+                            //    ServerListener.sendError(client, ErrorCode.credentialsNotValid);
+                            //    throw new Exception("tentato login con credenziali non valide <" + credentials.Username + "><" + credentials.Password + ">");
+                            //}
+
+                            userID = Convert.ToInt32(sqlCmd.ExecuteScalar());
+                        }
+                        tr.Commit();
                     }
-                    
                 }
 
                 
@@ -439,18 +443,12 @@ namespace Server
                         sqlCmd.CommandText = @"SELECT UID FROM Utenti WHERE Username=@_username";
                         sqlCmd.Parameters.AddWithValue("@_username", credentials.Username);
 
-                        SQLiteDataReader reader = sqlCmd.ExecuteReader();
-                        if (reader.HasRows == false)
-                        {
-                            ServerListener.sendError(client, ErrorCode.credentialsNotValid);
-                            throw new Exception("tentato login con credenziali non valide <" + credentials.Username + "><" + credentials.Password + ">");
-                        }
 
-                        int UID = (int)sqlCmd.ExecuteScalar();
+                        int UID = Convert.ToInt32(sqlCmd.ExecuteScalar());
                         
                         // Creo la cartella per l'utente
                         string basePath = Constants.PathServerFile + Path.DirectorySeparatorChar + UID;
-                        Directory.CreateDirectory(Path.GetDirectoryName(basePath));
+                        Directory.CreateDirectory(basePath);
 
                         // Creo l'xml dell'utente
                         string xmlPath = basePath + ".xml";
@@ -458,7 +456,6 @@ namespace Server
                         {
                             sw.WriteLine(@"<dir name = ""ClientSide"">");
                             sw.WriteLine(@"</dir>");
-
                         }
                     }
                 }
@@ -511,50 +508,55 @@ namespace Server
         /// Controllo se posso iniziare una sessione di sincronizzazione 
         /// </summary>
         /// <param name="client">Il client</param>
-        private static void startSynch(TcpClient client, int UID, ref SQLiteConnection connGlobal, ref SQLiteTransaction tGlobal)
+        private static void startSynch(TcpClient client, int UID, ref SQLiteConnection connGlobalp, ref SQLiteTransaction tGlobal)
         {
             tGlobal = null;
-            connGlobal = null;
-            connGlobal = new SQLiteConnection(DB.GetConnectionString());
-            connGlobal.Open();
+            connGlobalp = null;
+            //connGlobalp = new SQLiteConnection(DB.GetConnectionString());
+            //connGlobalp.Open();
+            
 
-            // Se viene lanciata un'eccezione automaticamente viene fatto il rollback uscendo dal blocco using
-            using (SQLiteTransaction tr = connGlobal.BeginTransaction())
+            using (SQLiteConnection connGlobal = new SQLiteConnection(DB.GetConnectionString()))
             {
-
-                using (SQLiteCommand sqlCmd = connGlobal.CreateCommand())
+                connGlobal.Open();
+                // Se viene lanciata un'eccezione automaticamente viene fatto il rollback uscendo dal blocco using
+                using (SQLiteTransaction tr = connGlobal.BeginTransaction())
                 {
-                    sqlCmd.CommandText = @"SELECT InSynch FROM Utenti WHERE UID = @_UID;";
-                    sqlCmd.Parameters.AddWithValue("@_UID", UID);
 
-                    SQLiteDataReader reader = sqlCmd.ExecuteReader();
-                    // Leggo la prima riga
-                    reader.Read();
-                    if (reader.GetBoolean(0) == true)
+                    using (SQLiteCommand sqlCmd = connGlobal.CreateCommand())
                     {
-                        // Il client è gia in synch
-                        return;
+                        sqlCmd.CommandText = @"SELECT InSynch FROM Utenti WHERE UID = @_UID;";
+                        sqlCmd.Parameters.AddWithValue("@_UID", UID);
+
+                        SQLiteDataReader reader = sqlCmd.ExecuteReader();
+                        // Leggo la prima riga
+                        reader.Read();
+                        if (reader.GetBoolean(0) == true)
+                        {
+                            // Il client è gia in synch
+                            return;
+                        }
                     }
+
+                    //// Se arrivo a sto punto vuol dire che non è loggato, allora lo metto in synch
+                    //using (SQLiteCommand sqlCmdInsert = connGlobal.CreateCommand())
+                    //{
+                    //    // Se sono qua posso aggiungere l'utente
+                    //    sqlCmdInsert.CommandText = @"UPDATE Utenti SET InSynch = @_insynch WHERE UID = @_UID";
+                    //    sqlCmdInsert.Parameters.AddWithValue("@_UID", UID);
+                    //    sqlCmdInsert.Parameters.AddWithValue("@_insynch", true);
+
+                    //    int nUpdated = sqlCmdInsert.ExecuteNonQuery();
+                    //    if (nUpdated != 1)
+                    //        return;
+
+                    //}
+
+                    tr.Commit();
                 }
-
-                // Se arrivo a sto punto vuol dire che non è loggato, allora lo metto in synch
-                using (SQLiteCommand sqlCmd = connGlobal.CreateCommand())
-                {
-                    // Se sono qua posso aggiungere l'utente
-                    sqlCmd.CommandText = @"UPDATE Utenti SET InSynch = @_insynch WHERE UID = @_UID";
-                    sqlCmd.Parameters.AddWithValue("@_UID", UID);
-                    sqlCmd.Parameters.AddWithValue("@_insynch", true);
-
-                    int nUpdated = sqlCmd.ExecuteNonQuery();
-                    if (nUpdated != 1)
-                        return;
-
-                }
-
-                tr.Commit();
             }
 
-            tGlobal = connGlobal.BeginTransaction();
+            //tGlobal = connGlobal.BeginTransaction();
         }
 
         /// <summary>
@@ -577,7 +579,7 @@ namespace Server
                 try
                 {
                     ///la conversione fa partire un NULLPOINTEREXCEPTION se l'oggetto sqlCmd è null
-                    latestVersionId = (int)sqlCmd.ExecuteScalar();
+                    latestVersionId = Convert.ToInt32(sqlCmd.ExecuteScalar());
                 }
                 catch (Exception e)
                 {
