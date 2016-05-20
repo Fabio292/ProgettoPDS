@@ -24,13 +24,19 @@ namespace Server
 
         private XDocument _xmlDoc;
 
-        //Carica l'xml da un file
-        public XmlManager(string uri)
+        /// <summary>
+        /// carico l'xml da un file
+        /// </summary>
+        /// <param name="xmlPath">Percorso assoluto del file</param>
+        public XmlManager(string xmlPath)
         {
-            this._xmlDoc = XDocument.Load(uri);
+            this._xmlDoc = XDocument.Load(xmlPath);
         }
 
-        //Genera l'xml corrispondente a quella cartella
+        /// <summary>
+        /// Genero l'xml andando a leggere il contenuto di una cartella
+        /// </summary>
+        /// <param name="_dir"></param>
         public XmlManager(DirectoryInfo _dir)
         {
             this._xmlDoc = new XDocument(CreateFileSystemXmlTree(_dir));

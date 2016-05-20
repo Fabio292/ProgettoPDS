@@ -27,14 +27,13 @@ namespace Client
         /// <summary>
         /// Percorso di test
         /// </summary>
-        public const string TestPath = @"D:\PDSCartellaPDS\ClientSide";
+        public const string PathClient = @"D:\PDSCartellaPDS\ClientSide";
 
         /// <summary>
         /// Percorso di test
         /// </summary>
-        public const string TestPathServer = @"D:\PDSCartellaPDS\server_directory";
+        public const string PathServerFile = @"D:\PDSCartellaPDS\ServerBackup";
        
-
         /// <summary>
         /// Percorso dove salvare il file xml
         /// </summary>

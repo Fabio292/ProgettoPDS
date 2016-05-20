@@ -130,7 +130,7 @@ namespace Server
         /// Estraggo il percorso relativo da un percorso assoluto</summary>
         /// <param name="abs">Il percorso assoluto (es: C:\blabla\a.txt)</param>
         /// <returns>Percorso relativo, senza '\' iniziale</returns>
-        public static string AbsToRelativePath(string abs, string root = Constants.TestPath)
+        public static string AbsToRelativePath(string abs, string root = Constants.PathClient)
         {
             return abs.Replace(root, "").Substring(1);
         }
@@ -139,7 +139,7 @@ namespace Server
         /// Costruisco un percorso assoluto partendo da uno relativo </summary>
         /// <param name="relative">Percorso relativo, (es dati\report.txt)'</param>
         /// <returns>Il percorso assoluto (es: C:\blabla\a.txt)</returns>
-        public static string RelativeToAbsPath(string relative, string root = Constants.TestPath)
+        public static string RelativeToAbsPath(string relative, string root = Constants.PathClient)
         {
 
             if (relative.StartsWith(Path.DirectorySeparatorChar.ToString()) == true)
@@ -481,6 +481,12 @@ namespace Server
         {
             this.LineNumber = lineNumber;
             this._fileName = fileName;
+        }
+
+        public MyException(string message)
+            : base(message)
+        {
+
         }
 
         public MyException(string message, Exception inner)

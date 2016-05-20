@@ -27,14 +27,18 @@ namespace Server
         /// <summary>
         /// Percorso di test
         /// </summary>
-        public const string TestPath = @"D:\PDSCartellaPDS\ClientSide";
+        public const string PathClient = @"D:\PDSCartellaPDS\ClientSide";
 
         /// <summary>
         /// Percorso di test
         /// </summary>
-        public const string TestPathServer = @"D:\PDSCartellaPDS\server_directory";
+        public const string PathServerFile = @"D:\PDSCartellaPDS\ClientBackup";
 
-
+        /// <summary>
+        /// Percorso del file del db
+        /// </summary>
+        public const string ServerDBPath = PathServerFile + PathSeparator + "db.sqlite";
+        
         /// <summary>
         /// Percorso dove salvare il file xml
         /// </summary>

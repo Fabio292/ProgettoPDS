@@ -70,7 +70,7 @@ namespace Client
 
             // genero l'xml
             // TODO fare in un thread a parte?
-            XMLManager = new XmlManager(new DirectoryInfo(Constants.TestPath));
+            XMLManager = new XmlManager(new DirectoryInfo(Constants.PathClient));
             XMLManager.SaveToFile(Constants.XmlSavePath + @"\x.xml");
             printXmlToTreeView();
 
@@ -183,7 +183,7 @@ namespace Client
         private void TreeViewRefreshTimerTick(object sender, ElapsedEventArgs e)
         {
             //TODO rimuovere!!!
-            //XMLManager = new XmlManager(new DirectoryInfo(Constants.TestPath));
+            //XMLManager = new XmlManager(new DirectoryInfo(Constants.PathClient));
             Logger.log("test timer");
             //-----------------            
 
@@ -262,7 +262,7 @@ namespace Client
         {
             Watcher = new FileSystemWatcher()
             {
-                Path = Constants.TestPath,
+                Path = Constants.PathClient,
 
                 NotifyFilter = NotifyFilters.DirectoryName | NotifyFilters.FileName | NotifyFilters.LastWrite,
                 //Watcher.NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.FileName | NotifyFilters.DirectoryName | NotifyFilters.CreationTime | NotifyFilters.Attributes;

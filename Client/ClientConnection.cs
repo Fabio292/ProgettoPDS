@@ -74,7 +74,6 @@ namespace Client
             XElement xmlRootServer;
             XElement xmlRootClient;
             List<String> refList = new List<String>();
-            List<String> refListDir = new List<String>();
 
             // TODO Blocco il timer
 
@@ -109,9 +108,7 @@ namespace Client
                     Logger.Info("elemento numero " + n + ": " + filepath);
                 }
 
-
-
-                updateDirectory(elementsNumber, refList);
+                updateDirectory(xmlClient, elementsNumber, refList);
 
             }
 
@@ -121,9 +118,8 @@ namespace Client
         /// invia al server i files creati/modificati
         /// </summary>
         /// <param name="elementi">numero di elementsNumber da inviare al server</param>
-        private void updateDirectory(int elementi, List<String> refString)
+        private void updateDirectory(XmlManager xmlClient, int elementi, List<String> refString)
         {
-
             // Devo inviare degli aggiornamenti, apro la synch
             Command cmd = new Command(CmdType.startSynch);
             Utilis.SendCmdSync(conn, cmd);
@@ -132,7 +128,7 @@ namespace Client
             Command resp = Utilis.GetCmdSync(conn);
             if (resp == null || resp.kmd != CmdType.ok)
             {
-                Logger.Error("errore");
+                Logger.Error("errore inizio synch");
                 return;
             }
 
@@ -145,7 +141,7 @@ namespace Client
             //testare che la dimensione inviata sia corretta
             foreach (string filePath in refString)
             {
-                //FileInfo f = new FileInfo(Constants.TestPath + filePath);
+                //FileInfo f = new FileInfo(Constants.PathClient + filePath);
                 //long dimensioneFile = f.Length;
 
                 FileInfoCommand f = new FileInfoCommand(filePath);
@@ -157,6 +153,20 @@ namespace Client
                 Utilis.SendFile(conn, f.AbsFilePath, f.FileSize);
                 Logger.Info("Ho inviato il file " + f.AbsFilePath);
             }
+
+            // Chiudo la sessione di sincronizzazione
+            resp = Utilis.GetCmdSync(conn);
+            if (resp == null || resp.kmd != CmdType.ok)
+            {
+                Logger.Error("errore fine synch");
+                return;
+            }
+            // Mando l'xml
+            XmlCommand lastXml = new XmlCommand(xmlClient);
+            Utilis.SendCmdSync(conn, lastXml);
+
+            Command end = new Command(CmdType.endSynch);
+            Utilis.SendCmdSync(conn, end);
 
 
 
