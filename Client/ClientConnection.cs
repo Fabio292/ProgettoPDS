@@ -74,6 +74,7 @@ namespace Client
             XElement xmlRootServer;
             XElement xmlRootClient;
             List<String> refList = new List<String>();
+            List<String> refListDir = new List<String>();
 
             // TODO Blocco il timer
 
@@ -82,7 +83,7 @@ namespace Client
 
             // Calcolo l'md5 del mio ultimo xml
             string md5XmlCLient = xmlClient.XMLDigest();
-            string md5XmlServer = this.getXmlDigest();
+            string md5XmlServer = getXmlDigest(); // Scarico il digest dal server
 
             if (String.Compare(md5XmlCLient, md5XmlServer) == 0)
             {
@@ -107,13 +108,11 @@ namespace Client
                     n++;
                     Logger.Info("elemento numero " + n + ": " + filepath);
                 }
-                
 
-                ///accrocchio, TODO capire perchè due cartelle perfettamente uguali possono avere un MD5 diverso (metadati sulla cartella??)
-                if (n == 0)
-                    Logger.Info("Le due cartelle sono perfettamente uguali, non è necessario nessun aggiornamento");
-                else
-                    updateDirectory(elementsNumber, refList);
+
+
+                updateDirectory(elementsNumber, refList);
+
             }
 
         }
@@ -124,6 +123,19 @@ namespace Client
         /// <param name="elementi">numero di elementsNumber da inviare al server</param>
         private void updateDirectory(int elementi, List<String> refString)
         {
+
+            // Devo inviare degli aggiornamenti, apro la synch
+            Command cmd = new Command(CmdType.startSynch);
+            Utilis.SendCmdSync(conn, cmd);
+
+            // Ricevo la risposta del server
+            Command resp = Utilis.GetCmdSync(conn);
+            if (resp == null || resp.kmd != CmdType.ok)
+            {
+                Logger.Error("errore");
+                return;
+            }
+
             //invio il numero di files che il server deve aspettarsi
             FileNumCommand numFiles = new FileNumCommand(elementi);
             Utilis.SendCmdSync(conn, numFiles);
@@ -145,6 +157,20 @@ namespace Client
                 Utilis.SendFile(conn, f.AbsFilePath, f.FileSize);
                 Logger.Info("Ho inviato il file " + f.AbsFilePath);
             }
+
+
+
+            ////Gestisco e invio il nome delle cartelle vuote
+            ////TODO controllare se è necessario piazzare i throw delle eccezioni (come quelle gestite nella classe FileInfoCommand)
+            //FileNumCommand numEmptyDirs = new FileNumCommand(refListDir.Count);
+            //Utilis.SendCmdSync(conn, numEmptyDirs);
+            //foreach (string emptyDir in refListDir)
+            //{
+            //    Command c = new Command(CmdType.sendDir, emptyDir);
+
+            //    Utilis.SendCmdSync(conn, c);
+            //    Logger.Info("Ho inviato il nome della cartella vuota: " + c.Payload);
+            //}
         }
 
 
@@ -179,7 +205,7 @@ namespace Client
 
             //il client riceve l'xml completo
             XmlCommand lastXmlServer = new XmlCommand(Utilis.GetCmdSync(this.conn));
-            
+
             if (lastXmlServer == null)
                 throw new Exception("Aspettavo un comando contenente un Xml, ricevuto nulla");
             if (lastXmlServer.kmd != CmdType.Xml)

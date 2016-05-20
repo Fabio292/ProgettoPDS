@@ -78,6 +78,9 @@ namespace Server
             XmlManager = new XmlManager(dirClient);
             string clientUsername = "";
 
+            SQLiteConnection conn = null;
+            SQLiteTransaction transaction = null;
+
             //TODO spostare in configurazione
             client.ReceiveTimeout = 1000000;
             bool exitFlag = false;
@@ -133,26 +136,56 @@ namespace Server
                     {
                         case CmdType.logout:
                             exitFlag = true;
-                            break;
-
-                        case CmdType.getXML:
-                            ///invio l'XML dell'ultima versione della cartella
-                            ServerListener.sendLastXml(client, XmlManager);
-                            Logger.Info("ho inviato l'Xml richiesto");
-                            ServerListener.getUpdates(client);
-
-                            // DEBUG
-                            XmlManager newXml = new XmlManager(dirClient);
-                            newXml.SaveToFile(Constants.XmlSavePath + @"\server.xml");
-                            break;
-
-                        case CmdType.sendFile:
+                            //TODO cancellare eventualmente conn e transaction
                             break;
 
                         case CmdType.getXmlDigest:
                             ///invio l'md5 dell'XML dell'ultima versione della cartella
                             ServerListener.sendXmlDigest(client, XmlManager);
                             Logger.Info("ho inviato l'md5 dell'Xml richiesto:" + XmlManager.XMLDigest());
+                            break;
+
+                        case CmdType.getXML:
+                            ///invio l'XML dell'ultima versione della cartella
+                            ServerListener.sendLastXml(client, XmlManager);
+                            Logger.Info("ho inviato l'Xml richiesto");
+
+                            break;
+
+                        case CmdType.sendFile:
+                            break;
+
+
+                        case CmdType.startSynch:
+                            ServerListener.startSynch(client, clientUsername, ref conn, ref transaction);
+
+                            // Controllo se ho effettivamente iniziato la sincronizzazione
+                            if (conn == null || transaction == null)
+                            {
+                                ServerListener.sendError(client, ErrorCode.userAlreadyInSynch);
+                                Logger.Error("L'utente " + clientUsername + " e' gia in synch");
+
+                                if (conn != null)
+                                {
+                                    conn.Close();
+                                    conn.Dispose();
+                                }
+
+                                if (transaction != null)
+                                {
+                                    transaction.Rollback();
+                                    transaction.Dispose();
+                                }
+
+                                exitFlag = true;
+                            }
+
+                            ServerListener.sendOk(client);
+                            ServerListener.getUpdates(client, conn, transaction);
+
+                            // DEBUG
+                            XmlManager newXml = new XmlManager(dirClient);
+                            newXml.SaveToFile(Constants.XmlSavePath + @"\server.xml");
                             break;
 
                         case CmdType.endSynch:
@@ -423,9 +456,59 @@ namespace Server
         }
 
         /// <summary>
+        /// Controllo se posso iniziare una sessione di sincronizzazione 
+        /// </summary>
+        /// <param name="client">Il client</param>
+        private static void startSynch(TcpClient client, string username, ref SQLiteConnection connGlobal, ref SQLiteTransaction tGlobal)
+        {
+            tGlobal = null;
+            connGlobal = null;
+            connGlobal = new SQLiteConnection(DB.GetConnectionString());
+            connGlobal.Open();
+
+            // Se viene lanciata un'eccezione automaticamente viene fatto il rollback uscendo dal blocco using
+            using (SQLiteTransaction tr = connGlobal.BeginTransaction())
+            {
+
+                using (SQLiteCommand sqlCmd = connGlobal.CreateCommand())
+                {
+                    sqlCmd.CommandText = @"SELECT InSynch FROM Utenti WHERE Username = @_username;";
+                    sqlCmd.Parameters.AddWithValue("@_username", username);
+
+                    SQLiteDataReader reader = sqlCmd.ExecuteReader();
+                    // Leggo la prima riga
+                    reader.Read();
+                    if (reader.GetBoolean(0) == true)
+                    {
+                        // Il client è gia in synch
+                        return;
+                    }
+                }
+
+                // Se arrivo a sto punto vuol dire che non è loggato, allora lo metto in synch
+                using (SQLiteCommand sqlCmd = connGlobal.CreateCommand())
+                {
+                    // Se sono qua posso aggiungere l'utente
+                    sqlCmd.CommandText = @"UPDATE Utenti SET InSynch = @_insynch WHERE Username = @_username";
+                    sqlCmd.Parameters.AddWithValue("@_username", username);
+                    sqlCmd.Parameters.AddWithValue("@_insynch", true);
+
+                    int nUpdated = sqlCmd.ExecuteNonQuery();
+                    if (nUpdated != 1)
+                        return;
+
+                }
+
+                tr.Commit();
+            }
+
+            tGlobal = connGlobal.BeginTransaction();
+        }
+
+        /// <summary>
         /// riceve i files mancanti dal client passato come parametro
         /// </summary>
-        private static void getUpdates(TcpClient client)
+        private static void getUpdates(TcpClient client, SQLiteConnection connGlobal, SQLiteTransaction transGlobals)
         {
             FileNumCommand numeroFiles = new FileNumCommand(Utilis.GetCmdSync(client));
             Logger.Info("il numero di files che devo ricevere e': " + numeroFiles.NumFiles);
@@ -548,9 +631,7 @@ namespace Server
                             }
                          
                     }
-
-                    tr.Commit();
-
+                    
                 }
 
             }
