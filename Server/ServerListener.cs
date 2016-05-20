@@ -452,6 +452,14 @@ namespace Server
                         string basePath = Constants.PathServerFile + Path.DirectorySeparatorChar + UID;
                         Directory.CreateDirectory(Path.GetDirectoryName(basePath));
 
+                        // Creo l'xml dell'utente
+                        string xmlPath = basePath + ".xml";
+                        using(StreamWriter sw = new StreamWriter(xmlPath))
+                        {
+                            sw.WriteLine(@"<dir name = ""ClientSide"">");
+                            sw.WriteLine(@"</dir>");
+
+                        }
                     }
                 }
                 #endregion
