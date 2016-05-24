@@ -3,6 +3,8 @@ using System.Net.Sockets;
 using System.Threading;
 using System.Xml.Linq;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
 
 namespace Client
 {
@@ -80,35 +82,48 @@ namespace Client
             string r = "";
             string path = "";
 
-            // Calcolo l'md5 del mio ultimo xml
-            string md5XmlCLient = xmlClient.XMLDigest();
-            string md5XmlServer = getXmlDigest(); // Scarico il digest dal server
-
-            if (String.Compare(md5XmlCLient, md5XmlServer) == 0)
+            try
             {
-                //TODO resetto il timer
-                Logger.Info("Le due cartelle sono perfettamente uguali, non è necessario nessun aggiornamento");
-            }
-            else
-            {
-                //le due cartelle sono diverse
-                Logger.Info("Le due cartelle sono diverse, creo elenco files diversi:\nMD5 Client: " + md5XmlCLient + "\nMD5 Server: " + md5XmlServer);
-                xmlRootClient = xmlClient.GetRoot();
-                xmlRootServer = XmlManager.GetRoot(getLastXml());
 
-                //guardo le differenze tra i due XDocuments e popolo r delle stringhe di richiesta da inviare al server
-                int elementsNumber = XmlManager.checkDiff(xmlRootClient, xmlRootServer, refList, ref r, path);
-                Logger.Info("l'elenco comandi inviati al server e': \n" + r);
-                Logger.Info("il numero di elementi da inviare al server e': " + elementsNumber);
+            
+                // Calcolo l'md5 del mio ultimo xml
+                string md5XmlCLient = xmlClient.XMLDigest();
+                string md5XmlServer = getXmlDigest(); // Scarico il digest dal server
 
-                int n = 0;
-                foreach (string filepath in refList)
+                if (String.Compare(md5XmlCLient, md5XmlServer) == 0)
                 {
-                    n++;
-                    Logger.Info("elemento numero " + n + ": " + filepath);
+                    //TODO resetto il timer
+                    Logger.Info("Le due cartelle sono perfettamente uguali, non è necessario nessun aggiornamento");
                 }
+                else
+                {
+                    //le due cartelle sono diverse
+                    Logger.Info("Le due cartelle sono diverse, creo elenco files diversi:\nMD5 Client: " + md5XmlCLient + "\nMD5 Server: " + md5XmlServer);
+                    xmlRootClient = xmlClient.GetRoot();
+                    xmlRootServer = XmlManager.GetRoot(getLastXml());
 
-                updateDirectory(xmlClient, elementsNumber, refList);
+                    //guardo le differenze tra i due XDocuments e popolo r delle stringhe di richiesta da inviare al server
+                    int elementsNumber = XmlManager.checkDiff(xmlRootClient, xmlRootServer, refList, ref r, path);
+                    Logger.Info("l'elenco comandi inviati al server e': \n" + r);
+                    Logger.Info("il numero di elementi da inviare al server e': " + elementsNumber);
+
+                    int n = 0;
+                    foreach (string filepath in refList)
+                    {
+                        n++;
+                        Logger.Info("elemento numero " + n + ": " + filepath);
+                    }
+
+                    updateDirectory(xmlClient, elementsNumber, refList);
+
+                }
+            }
+            catch (Exception e)
+            {
+                StackTrace st = new StackTrace(e, true);
+                StackFrame sf = Utilis.GetFirstValidFrame(st);
+
+                Logger.Error("[" + Path.GetFileName(sf.GetFileName()) + "(" + sf.GetFileLineNumber() + ")] Errore sincronizzazione con il server: " + e.Message);
 
             }
 

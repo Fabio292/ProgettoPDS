@@ -37,7 +37,7 @@ namespace Server
         /// <summary>
         /// Percorso del file del db
         /// </summary>
-        public const string ServerDBPath = PathServerFile + PathSeparator + "db.sqlite";
+        public const string ServerDBPath = @"D:\PDSCartellaPDS\db.sqlite";
         
         /// <summary>
         /// Percorso dove salvare il file xml

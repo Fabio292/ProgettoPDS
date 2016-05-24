@@ -154,6 +154,7 @@ namespace Client
         private void BtnStartSynch_Click(object sender, RoutedEventArgs e)
         {
             client.Connect(cts.Token);
+            client.ClientSync(XMLManager);
         }
 
 
@@ -467,6 +468,7 @@ namespace Client
                 #endregion
 
                 #region Ricezione risposta
+
                 Command answer = Utilis.GetCmdSync(client.getTcpClient());
 
                 if (answer == null)
@@ -629,7 +631,7 @@ namespace Client
             finally
             {
                 // Disconnetto il client in ogni caso visto che dovrà settare la configurazione
-                client.Disconnect();
+                //client.Disconnect();
             }
         }
         

@@ -19,7 +19,9 @@ namespace Server
         public static void SetDbConn(string dbPath)
         {
             DB.dbPath = dbPath;
-            dbConnectionString = string.Format(@"Data Source={0}; Pooling=false; FailIfMissing=false;", dbPath);
+            
+            dbConnectionString = string.Format(@"Data Source={0}; Pooling=false; FailIfMissing=false; Version=3;", dbPath);
+            //dbConnectionString = string.Format(@"Data Source={0}; Version=3;", dbPath);
         }
 
         /// <summary>
@@ -127,14 +129,29 @@ namespace Server
             DataTable dt = new DataTable();
             try
             {
-                SQLiteConnection cnn = new SQLiteConnection(dbConnectionString);
-                cnn.Open();
-                SQLiteCommand mycommand = new SQLiteCommand(cnn);
-                mycommand.CommandText = sql;
-                SQLiteDataReader reader = mycommand.ExecuteReader();
-                dt.Load(reader);
-                reader.Close();
-                cnn.Close();
+                //SQLiteConnection cnn = new SQLiteConnection(dbConnectionString);
+                //cnn.Open();
+                //SQLiteCommand mycommand = new SQLiteCommand(cnn);
+                //mycommand.CommandText = sql;
+                //SQLiteDataReader reader = mycommand.ExecuteReader();
+                //dt.Load(reader);
+                //reader.Close();
+                //cnn.Close();
+
+
+                using (SQLiteConnection cnn = new SQLiteConnection(DB.GetConnectionString()))
+                {
+                    cnn.Open();
+                    using (SQLiteCommand mycommand = cnn.CreateCommand())
+                    {
+                        mycommand.CommandText = sql;
+
+                        using (SQLiteDataReader rdr = mycommand.ExecuteReader())
+                        {
+                            dt.Load(rdr);
+                        }
+                    }
+                }
             }
             catch (Exception)
             {
@@ -150,13 +167,18 @@ namespace Server
         /// <returns>An Integer containing the number of rows updated.</returns>  
         public static int ExecuteNonQuery(string sql)
         {
-            SQLiteConnection cnn = new SQLiteConnection(dbConnectionString);
-            cnn.Open();
-            SQLiteCommand mycommand = new SQLiteCommand(cnn);
-            mycommand.CommandText = sql;
-            int rowsUpdated = mycommand.ExecuteNonQuery();
-            cnn.Close();
-            return rowsUpdated;
+            int ret = 0;
+            using (SQLiteConnection cnn = new SQLiteConnection(DB.GetConnectionString()))
+            {
+                cnn.Open();
+                using (SQLiteCommand mycommand = cnn.CreateCommand())
+                {
+                    mycommand.CommandText = sql;
+                    ret = mycommand.ExecuteNonQuery();
+
+                }
+            }
+            return ret;
         }
 
         /// <summary>  
@@ -166,17 +188,21 @@ namespace Server
         /// <returns>A string.</returns>  
         public static string ExecuteScalar(string sql)
         {
-            SQLiteConnection cnn = new SQLiteConnection(dbConnectionString);
-            cnn.Open();
-            SQLiteCommand mycommand = new SQLiteCommand(cnn);
-            mycommand.CommandText = sql;
-            object value = mycommand.ExecuteScalar();
-            cnn.Close();
-            if (value != null)
+            string ret = "";
+            using (SQLiteConnection cnn = new SQLiteConnection(DB.GetConnectionString()))
             {
-                return value.ToString();
+                cnn.Open();
+                using (SQLiteCommand mycommand = cnn.CreateCommand())
+                {
+                    mycommand.CommandText = sql;
+                    object value = mycommand.ExecuteScalar();
+                    if (value != null)
+                    {
+                        return value.ToString();
+                    }
+                }
             }
-            return "";
+            return ret;
         }
 
         #region UPDATE DELETE INSERT
