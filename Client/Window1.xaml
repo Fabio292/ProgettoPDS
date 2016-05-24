@@ -23,7 +23,7 @@
                     <Label x:Name="nome" Content="Username" HorizontalAlignment="Center" FontWeight="Bold" Margin="0,30,0,0" VerticalAlignment="Top"/>
                     <TextBox x:Name="TXTUsernameInserito" HorizontalAlignment="Center" Height="23" Margin="0,55,0,0" TextWrapping="Wrap" Text="" VerticalAlignment="Top" Width="180"/>
 
-                    <Label x:Name="pwd" Content="Password" HorizontalAlignment="Center" FontWeight="Bold" Margin="0,100,0,0" VerticalAlignment="Top" />
+                    <Label x:Name="savedPwdpwd" Content="Password" HorizontalAlignment="Center" FontWeight="Bold" Margin="0,100,0,0" VerticalAlignment="Top" />
                     <TextBox x:Name="TXTPasswordInserita" HorizontalAlignment="Center" Height="23" Margin="0,125,0,0" TextWrapping="Wrap" Text="" VerticalAlignment="Top" Width="180"/>
 
                     <CheckBox x:Name="ChkRicorda" Content="Ricordami" HorizontalAlignment="Center" Margin="148,151,255,0" VerticalAlignment="Top"/>

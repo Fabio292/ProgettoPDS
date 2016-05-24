@@ -5,6 +5,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Diagnostics;
 using System.Threading;
+using System.Linq;
 
 namespace Client
 {
@@ -27,7 +28,7 @@ namespace Client
         public static string MD5sum(string file)
         {
             Exception last = null;
-            
+
             for (int i = 0; i < 5; i++) // HACK mostruoso
             {
                 try
@@ -38,18 +39,18 @@ namespace Client
                         {
                             byte[] checksum = md5.ComputeHash(stream);
                             return BitConverter.ToString(checksum).Replace("-", string.Empty).ToLower();
-                            
+
                         }
                     }
                 }
                 catch (Exception e)
                 {
                     Thread.Sleep(50);
-                    last = e;                   
+                    last = e;
                 }
             }
             // Se arrivo qua c'è stato un problema
-            throw last;            
+            throw last;
         }
 
         /// <summary>
@@ -76,6 +77,17 @@ namespace Client
 
         #endregion
 
+        /// <summary>
+        /// Genera una stringa random alfanumerica
+        /// </summary>
+        /// <param name="length">Lunghezza della stringa</param>
+        public static string RandomString(int length)
+        {
+            const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+            var random = new Random();
+            return new string(Enumerable.Repeat(chars, length)
+              .Select(s => s[random.Next(s.Length)]).ToArray());
+        }
 
         /// <summary>
         /// Normalizza la dimensione di un file per ottenere una stringa con il suffisso MB KB GB
@@ -481,6 +493,12 @@ namespace Client
         {
             this.LineNumber = lineNumber;
             this._fileName = fileName;
+        }
+
+        public MyException(string message)
+            : base(message)
+        {
+
         }
 
         public MyException(string message, Exception inner)

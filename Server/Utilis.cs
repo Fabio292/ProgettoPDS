@@ -5,6 +5,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Diagnostics;
 using System.Threading;
+using System.Linq;
 
 namespace Server
 {
@@ -76,6 +77,17 @@ namespace Server
 
         #endregion
 
+        /// <summary>
+        /// Genera una stringa random alfanumerica
+        /// </summary>
+        /// <param name="length">Lunghezza della stringa</param>
+        public static string RandomString(int length)
+        {
+            const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+            var random = new Random();
+            return new string(Enumerable.Repeat(chars, length)
+              .Select(s => s[random.Next(s.Length)]).ToArray());
+        }
 
         /// <summary>
         /// Normalizza la dimensione di un file per ottenere una stringa con il suffisso MB KB GB

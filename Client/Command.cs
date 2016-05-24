@@ -4,7 +4,9 @@ using System.Text;
 
 namespace Client
 {
-
+    /// <summary>
+    /// Il comando è composto da [tipo|auth_token|lunghezza_payload|payload]
+    /// </summary>
     class Command
     {
         private CmdType _kmd;
@@ -318,11 +320,6 @@ namespace Client
     /// </summary>
     class FileInfoCommand : Command
     {
-        //#region Dimensioni Header
-        //private static readonly int FilePathLengthSize = sizeof(int);        //sizeof(typeof(string.length))
-        //private static readonly int FileSizeLength = sizeof(long);
-        //private static readonly int LastModTimeLenghSize = sizeof(int);      //sizeof(typeof(string.length))
-        //#endregion
 
         private string _relFilePath;
         private Int64 _fileSize;
@@ -430,35 +427,6 @@ namespace Client
             // Se arrivo a questo punto ho finito di leggere il comando ricevuto
         }
 
-        ///// <summary>
-        ///// Estraggo la dimensione dei campi dal Payload
-        ///// </summary>
-        //private void extractFieldSize(string payloadP, out int lenRelPath, out int lenLastModTime)
-        //{
-        //    try
-        //    {
-        //        // Estraggo le dimensioni
-        //        lenRelPath = BitConverter.ToInt32(Encoding.UTF8.GetBytes(payloadP.Substring(0, FileInfoCommand.FilePathLengthSize)), 0);
-
-        //        // La dimensione della data si trova dopo i campi relPath(+4 byte per la sua dimensione) e fileSize (8 byte)
-        //        int lastModTimeSizeStartIndex = lenRelPath + FileInfoCommand.FilePathLengthSize + FileInfoCommand.FileSizeLength;
-        //        lenLastModTime = BitConverter.ToInt32(Encoding.UTF8.GetBytes(payloadP.Substring(lastModTimeSizeStartIndex, FileInfoCommand.LastModTimeLenghSize)), 0);
-
-        //        // Controllo se le dimensioni sono valide
-        //        if (lenRelPath < 0 || lenLastModTime < 0)
-        //            throw new Exception("Lunghezza campi negativa");
-
-        //        //Controllo se le dimensioni sono coerenti
-        //        Int32 expectedPayloadSize = FileInfoCommand.FilePathLengthSize + FileInfoCommand.FileSizeLength + FileInfoCommand.LastModTimeLenghSize //header size
-        //                                    + lenRelPath + lenLastModTime;
-        //        if (payloadP.Length != expectedPayloadSize)
-        //            throw new Exception("La dimensione del payload non è corretta");
-        //    }
-        //    catch (Exception e)
-        //    {
-        //        throw new ArgumentException("Il comando passato non è formattato correttamente (" + e.Message + ")");
-        //    }
-        //}
 
         /// <summary>
         /// Estraggo il valore dei campi e lo vado a salvare direttamente nelle proprietà
@@ -501,16 +469,6 @@ namespace Client
             ret += FileInfoCommand.cmdSeparator;
             ret += this._lastModTime.ToString();
 
-            //string lastModTimeString = this._lastModTime.ToString();
-
-            //Int32 lenRelPath = this._relFilePath.Length;
-            //Int32 lenLastModTime = lastModTimeString.Length;
-
-            //ret += Encoding.UTF8.GetString(BitConverter.GetBytes(lenRelPath));
-            //ret += this._relFilePath;
-            //ret += Encoding.UTF8.GetString(BitConverter.GetBytes(this._fileSize));
-            //ret += Encoding.UTF8.GetString(BitConverter.GetBytes(lenLastModTime));
-            //ret += lastModTimeString;
 
             return ret;
         }

@@ -189,7 +189,8 @@ namespace Server
                             break;
 
                         case CmdType.endSynch:
-
+                            ServerListener.endSynch(client, ref conn, ref transaction, userID);
+                            exitFlag = true;
                             break;
 
                         default:
@@ -207,7 +208,7 @@ namespace Server
                 StackTrace st = new StackTrace(e, true);
                 StackFrame sf = Utilis.GetFirstValidFrame(st);
 
-                Logger.Error("Errore gestione client (" + client.Client.RemoteEndPoint + ")[" + Path.GetFileName(sf.GetFileName()) + "(" + sf.GetFileLineNumber() + ")]: " + e.Message);
+                Logger.Error("[" + Path.GetFileName(sf.GetFileName()) + "(" + sf.GetFileLineNumber() + ")]: " + e.Message);
 
                 // eventualmente chiudo la transaction con un rollback se necessario e la connessione
                 if (transaction != null)
@@ -450,11 +451,7 @@ namespace Server
 
                         // Creo l'xml dell'utente
                         string xmlPath = basePath + ".xml";
-                        using(StreamWriter sw = new StreamWriter(xmlPath))
-                        {
-                            sw.WriteLine(@"<dir name = ""ClientSide"">");
-                            sw.WriteLine(@"</dir>");
-                        }
+                        XmlManager.InitializeXmlFile(xmlPath);
                     }
                 }
                 #endregion
@@ -481,6 +478,9 @@ namespace Server
         private static void sendXmlDigest(TcpClient client, int UID)
         {
             string xmlPath = Constants.PathServerFile + Constants.PathSeparator + UID + ".xml";
+            if(!File.Exists(xmlPath))
+                XmlManager.InitializeXmlFile(xmlPath);
+
             XmlManager xml = new XmlManager(xmlPath);
 
             XmlDigestCommand digest = new XmlDigestCommand(xml);
@@ -494,6 +494,9 @@ namespace Server
         public static void sendLastXml(TcpClient cl, int UID)
         {
             string xmlPath = Constants.PathServerFile + Constants.PathSeparator + UID + ".xml";
+            if (!File.Exists(xmlPath))
+                XmlManager.InitializeXmlFile(xmlPath);
+
             XmlManager xml = new XmlManager(xmlPath);
 
             XmlCommand lastXml = new XmlCommand(xml);
@@ -529,7 +532,7 @@ namespace Server
                             if (reader.GetBoolean(0) == true)
                             {
                                 // Il client è gia in synch
-                                return;
+                                //return; TODO togliere
                             }
                         }
                         
@@ -548,8 +551,6 @@ namespace Server
                             return;
 
                     }
-                    Logger.Debug("-->" + tr.ToString());
-                    Logger.Debug("-->" + tr.IsolationLevel.ToString());
                     tr.Commit();
                 }
             }
@@ -633,8 +634,9 @@ namespace Server
                 FileInfoCommand info = new FileInfoCommand(Utilis.GetCmdSync(client));
 
                 // Genero il nome univoco per il file
-                //string destFileName = Utilis.Md5String(Path.GetFileName(info.AbsFilePath) + "." + latestVersionId);
-                string destFileName = Path.GetFileName(info.AbsFilePath) + "." + latestVersionId;
+                string destFileName = Utilis.Md5String(Path.GetFileName(info.AbsFilePath)) + "_" 
+                    + Utilis.RandomString(5) + "." + latestVersionId; 
+                //string destFileName = Path.GetFileName(info.AbsFilePath) + "." + latestVersionId;
 
                 // Creo l'albero di cartelle se necessario
                 // Directory.CreateDirectory(Path.GetDirectoryName(destPath));
@@ -654,18 +656,20 @@ namespace Server
                     //file correttamente rimosso, significa che il file è stato aggiornato -> aggiorno l'entry nel DB
                     using (SQLiteCommand sqlCmd = connGlobal.CreateCommand())
                     {
-                        sqlCmd.CommandText = @"INSERT Versioni (UID, VersionID, PathClient, MD5, LastModTime, Size, PathServer, LastVersion, Deleted)
-                                                VALUES (@_UID ,@_latestV, @_pathClient, ,@_lastModTime, @_size, @_pathServer, true, false)";
+                        sqlCmd.CommandText = @"INSERT INTO Versioni (UID, VersionID, PathClient, MD5, LastModTime, Size, PathServer, LastVersion, Deleted)
+                                                VALUES (@_UID ,@_versionID, @_pathClient, @_md5, @_lastModTime, @_size, @_pathServer, @_lastVersion, @_deleted)";
 
                         sqlCmd.Parameters.AddWithValue("@_UID", UID);
-                        sqlCmd.Parameters.AddWithValue("@_latestV", latestVersionId);
+                        sqlCmd.Parameters.AddWithValue("@_versionID", latestVersionId);
                         sqlCmd.Parameters.AddWithValue("@_pathClient", info.RelFilePath);
                         sqlCmd.Parameters.AddWithValue("@_md5", Utilis.MD5sum(destFilePathAbs));
                         sqlCmd.Parameters.AddWithValue("@_lastModTime", info.LastModTime);
                         sqlCmd.Parameters.AddWithValue("@_size", info.FileSize);
                         sqlCmd.Parameters.AddWithValue("@_pathServer", destFilePathAbs);
+                        sqlCmd.Parameters.AddWithValue("@_lastVersion", true);
+                        sqlCmd.Parameters.AddWithValue("@_deleted", false);
 
-                        Logger.Debug("--> " + sqlCmd.CommandText);
+
                         int nUpdated = sqlCmd.ExecuteNonQuery();
                         if (nUpdated != 1)
                             throw new Exception("Impossibile aggiungere il nuovo file " + info + " nel DB");
@@ -681,12 +685,14 @@ namespace Server
                     using (SQLiteCommand sqlCmd = connGlobal.CreateCommand())
                     {
                         sqlCmd.CommandText = @"UPDATE Versioni 
-                                        SET VersionID = @_latestV, LastVersion = false  
+                                        SET VersionID = @_versionID, LastVersion = @_lastVersion  
                                         WHERE PathClient = @_pathClient AND UID = @_UID";
                                
-                        sqlCmd.Parameters.AddWithValue("@_latestV", latestVersionId);
+                        sqlCmd.Parameters.AddWithValue("@_versionID", latestVersionId);
+                        sqlCmd.Parameters.AddWithValue("@_lastVersion", false);
                         sqlCmd.Parameters.AddWithValue("@_pathClient", file);
                         sqlCmd.Parameters.AddWithValue("@_UID", UID);
+                        
 
                         int nUpdated = sqlCmd.ExecuteNonQuery();
                         if (nUpdated != 1)
@@ -721,7 +727,7 @@ namespace Server
         /// <summary>
         /// Gestisco la chiusura della sessione
         /// </summary>
-        private static void endSynch(TcpClient client, SQLiteConnection connGlobal, SQLiteTransaction transGlobals, int UID)
+        private static void endSynch(TcpClient client, ref SQLiteConnection connGlobal, ref SQLiteTransaction transGlobals, int UID)
         {
 
             // Tolgo l'utente dalla synch
@@ -744,8 +750,6 @@ namespace Server
             
             // Chiudo tutto
             transGlobals.Commit();
-
-            transGlobals.Rollback();
             transGlobals.Dispose();
 
             connGlobal.Close();

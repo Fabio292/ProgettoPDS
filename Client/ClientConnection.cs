@@ -41,8 +41,7 @@ namespace Client
         /// <summary>
         /// Connetto il client al server</summary>
         /// <exception cref="Exception">Eccezioni generiche</exception>
-        /// <param name="ct">Cancellation token</param>
-        public void Connect(CancellationToken ct)
+        public void Connect()
         {
             // Controllo di non essere gia connesso
             if (this.isConnected == false)
@@ -61,9 +60,21 @@ namespace Client
             }
         }
 
+        /// <summary>
+        /// Ritorna l'oggetto TcpClient per questa istanza
+        /// </summary>
         public TcpClient getTcpClient()
         {
             return this.conn;
+        }
+
+
+        public bool tryLogin(string username, string password)
+        {
+            bool ret = false;
+
+
+            return ret;
         }
 
 
@@ -77,15 +88,17 @@ namespace Client
             XElement xmlRootClient;
             List<String> refList = new List<String>();
 
-            // TODO Blocco il timer
+            // TODO Blocco il timer         
 
             string r = "";
             string path = "";
 
             try
             {
+                // Mi connetto al server
+                this.Connect();
 
-            
+
                 // Calcolo l'md5 del mio ultimo xml
                 string md5XmlCLient = xmlClient.XMLDigest();
                 string md5XmlServer = getXmlDigest(); // Scarico il digest dal server
@@ -221,7 +234,7 @@ namespace Client
         }
 
         /// <summary>
-        ///ritorna l'XML dell'ultima versione posseduta dal server
+        /// Ritorna l'XML dell'ultima versione posseduta dal server
         /// </summary>
         public XDocument getLastXml()
         {

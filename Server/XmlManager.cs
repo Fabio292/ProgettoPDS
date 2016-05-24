@@ -43,6 +43,19 @@ namespace Server
             //SaveToFile(@"C:\Users\Utente\Desktop\out.xml");
         }
 
+        /// <summary>
+        /// Genero un file per il'xml
+        /// </summary>
+        /// <param name="path">Percorso assoluto dove salvare l'xml</param>
+        static public void InitializeXmlFile(string path)
+        {
+            using (StreamWriter sw = new StreamWriter(path))
+            {
+                sw.WriteLine(@"<dir name = ""ClientSide"">");
+                sw.WriteLine(@"</dir>");
+            }
+        }
+
 
         private XElement CreateFileSystemXmlTree(DirectoryInfo di)
         {

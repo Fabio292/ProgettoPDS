@@ -88,6 +88,11 @@ namespace Client
         /// Dimensione di un HASH MD5
         /// </summary>
         public const int MD5OutputLegth = 32;
+
+        /// <summary>
+        /// Lunghezza dell'auth token 
+        /// </summary>
+        public const int AuthTokenLength = 12;
     }
 
     /// <summary>

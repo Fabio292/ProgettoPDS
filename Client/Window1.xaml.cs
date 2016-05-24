@@ -29,6 +29,9 @@ namespace Client
 
         static System.Timers.Timer TreeViewRefreshTimer;
 
+        private string savedUsername = "";
+        private string savedPwd = "";
+
         #region COSTRUTTORE - USCITA
         public Window1()
         {
@@ -84,11 +87,11 @@ namespace Client
                 
                 using (StreamReader sr = new StreamReader("credenziali.dat"))
                 {
-                    string usn = sr.ReadLine();
-                    string pwd = sr.ReadLine();
+                    savedUsername = sr.ReadLine();
+                    savedPwd = sr.ReadLine();
 
-                    TXTUsernameInserito.Text = usn;
-                    TXTPasswordInserita.Text = pwd;
+                    TXTUsernameInserito.Text = savedUsername;
+                    TXTPasswordInserita.Text = savedPwd;
                 }
 
                 ChkRicorda.IsChecked = true;
@@ -153,7 +156,7 @@ namespace Client
 
         private void BtnStartSynch_Click(object sender, RoutedEventArgs e)
         {
-            client.Connect(cts.Token);
+            client.Connect();
             client.ClientSync(XMLManager);
         }
 
@@ -438,7 +441,7 @@ namespace Client
                 return;
             }
             
-            
+            // Salvo le credenziali su file per ricordarmele in futuro
             if(ChkRicorda.IsChecked == true)
             {
                 // Salvo le credenziali su file
@@ -460,7 +463,7 @@ namespace Client
                 // username e password nulli o troppo corti vengono gestiti sopra
                 SendCredentials loginCmd = new SendCredentials(username, pwd, CmdType.login);
 
-                client.Connect(cts.Token);
+                client.Connect();
 
                 //invio il comando al server
                 Utilis.SendCmdSync(client.getTcpClient(), loginCmd);
@@ -488,14 +491,12 @@ namespace Client
                     default:
                         throw new Exception("Mi aspettavo (error|ok) Ricevuto " + Utilis.Cmd2String(answer.kmd));
                 }
+                client.Disconnect();
                 #endregion
 
-                #region Gestione sincronizzazione
+               
                 client.ClientSync(XMLManager);
                 
-                     
-                #endregion
-
             }
             catch (Exception ex)
             {
@@ -514,6 +515,8 @@ namespace Client
                 TABControl.SelectedIndex = 0;
             }
         }
+
+
         
 
         /// <summary>
@@ -565,7 +568,7 @@ namespace Client
                 // il formato corretto viene gestito dalla classe SendCredentials
                 SendCredentials regCmd = new SendCredentials(username, password, CmdType.registration);
 
-                client.Connect(cts.Token);
+                client.Connect();
 
                 // Invio il comando al server
                 Utilis.SendCmdSync(client.getTcpClient(), regCmd);
@@ -631,7 +634,7 @@ namespace Client
             finally
             {
                 // Disconnetto il client in ogni caso visto che dovrà settare la configurazione
-                //client.Disconnect();
+                client.Disconnect();
             }
         }
         
