@@ -645,7 +645,6 @@ namespace Server
                         {
                             ///popolo la lista dei files dell'ultima versione
                             listaElementiUltimaVersioneServer.Add(reader.GetString(0));
-                            Logger.log("Aggiunto elemento " + reader.GetString(0) + "alla lista listaElementiUltimaVersioneServer");
                         }
                     }
                     else
@@ -722,9 +721,10 @@ namespace Server
                     {
                         sqlCmd.CommandText = @"UPDATE Versioni 
                                     SET VersionID = @_versionID, LastVersion = @_lastVersion  
-                                    WHERE PathClient = @_pathClient AND UID = @_UID";
+                                    WHERE PathClient = @_pathClient AND UID = @_UID AND VersionID = @_prevVersionID";
 
                         sqlCmd.Parameters.AddWithValue("@_versionID", latestVersionId);
+                        sqlCmd.Parameters.AddWithValue("@_prevVersionID", latestVersionId-1);
                         sqlCmd.Parameters.AddWithValue("@_lastVersion", false);
                         sqlCmd.Parameters.AddWithValue("@_pathClient", file);
                         sqlCmd.Parameters.AddWithValue("@_UID", UID);

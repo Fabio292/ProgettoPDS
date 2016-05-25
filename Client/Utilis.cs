@@ -221,33 +221,6 @@ namespace Client
         }
 
         /// <summary>
-        /// Ritorno il numero di riga che ha scatenato l'eccezione
-        /// </summary>
-        /// <param name="stackTrace">StackTrace dell'eccezione</param>
-        public static int GetExceptionLine(string stackTrace)
-        {
-            int ret = 0;
-            string firstLine = "";
-
-            int endFirstLine = stackTrace.IndexOf(Environment.NewLine);
-
-            if (endFirstLine == -1)
-                firstLine = stackTrace;
-            else
-                firstLine = stackTrace.Substring(0, endFirstLine);
-
-            string[] token = firstLine.Split(' ');
-            string ln = token[token.Length - 1];
-
-            if (int.TryParse(ln, out ret) == false)
-            {
-                ret = 0;
-            }
-
-            return ret;
-        }
-
-        /// <summary>
         /// Ritorno il primo stackframe utile (escludendo quelli di libreria)
         /// </summary>
         /// <param name="st">La Stack Trace dell'eccezione</param>
@@ -276,29 +249,31 @@ namespace Client
         public static void SendFile(TcpClient cl, string absFname, Int64 fileSize)
         {
             int counter = 0, letti = 0;
-            FileStream fs = new FileStream(absFname, FileMode.Open, FileAccess.ReadWrite);
-            byte[] chunk = new byte[Constants.FileTransferChunkSize];
-            Int32 chunkNumber = (Int32)Math.Floor((double)fileSize / 1024);
-            Int32 lastChunkSize = (Int32)(fileSize % 1024);
-
-            // Apro il file e leggo e invio chunk per chunk
-            while (counter < chunkNumber)
+            using (FileStream fs = new FileStream(absFname, FileMode.Open, FileAccess.ReadWrite))
             {
-                letti = fs.Read(chunk, 0, Constants.FileTransferChunkSize);
-                if (letti != Constants.FileTransferChunkSize)
-                    throw new IOException("Impossibile completare lettura di un chunk");
+                byte[] chunk = new byte[Constants.FileTransferChunkSize];
+                Int32 chunkNumber = (Int32)Math.Floor((double)fileSize / 1024);
+                Int32 lastChunkSize = (Int32)(fileSize % 1024);
 
-                Utilis.SafeSocketWrite(cl.Client, chunk, Constants.FileTransferChunkSize);
-                counter++;
+                // Apro il file e leggo e invio chunk per chunk
+                while (counter < chunkNumber)
+                {
+                    letti = fs.Read(chunk, 0, Constants.FileTransferChunkSize);
+                    if (letti != Constants.FileTransferChunkSize)
+                        throw new IOException("Impossibile completare lettura di un chunk");
+
+                    Utilis.SafeSocketWrite(cl.Client, chunk, Constants.FileTransferChunkSize);
+                    counter++;
+                }
+
+                // Leggo e invio l'ulitmo chunk (che non è necessaramente grande 1024B)
+                Array.Clear(chunk, 0, Constants.FileTransferChunkSize);
+                letti = fs.Read(chunk, 0, lastChunkSize);
+                if (letti != lastChunkSize)
+                    throw new IOException("Impossibile completare lettura ultimo chunk");
+
+                Utilis.SafeSocketWrite(cl.Client, chunk, lastChunkSize);
             }
-
-            // Leggo e invio l'ulitmo chunk (che non è necessaramente grande 1024B)
-            Array.Clear(chunk, 0, Constants.FileTransferChunkSize);
-            letti = fs.Read(chunk, 0, lastChunkSize);
-            if (letti != lastChunkSize)
-                throw new IOException("Impossibile completare lettura ultimo chunk");
-
-            Utilis.SafeSocketWrite(cl.Client, chunk, lastChunkSize);
 
             return;
         }
@@ -310,7 +285,6 @@ namespace Client
         /// <param name="fileSize">Dimensione del file in byte</param>
         public static void GetFile(TcpClient cl, string absFname, Int64 fileSize)
         {
-
             using (FileStream fs = new FileStream(absFname, FileMode.CreateNew, FileAccess.Write))
             {
                 byte[] chunk = new byte[Constants.FileTransferChunkSize];

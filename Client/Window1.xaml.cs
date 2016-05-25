@@ -302,8 +302,6 @@ namespace Client
         /// </summary>
         private void OnChanged(object source, FileSystemEventArgs e)
         {
-            
-            
             try
             {
                 if (e.ChangeType == WatcherChangeTypes.Changed)
@@ -313,7 +311,6 @@ namespace Client
                         return;
 
                     FileAttributeHelper fileAttr = new FileAttributeHelper(e.FullPath);
-
                     XMLManager.RefreshFile(fileAttr);
 
                 }
@@ -321,7 +318,7 @@ namespace Client
                 {
                     if (Utilis.IsDirectory(e.FullPath))
                     {
-                        // Creazione nuova cartella
+                        //TODO Creazione nuova cartella
                     }
                     else
                     {

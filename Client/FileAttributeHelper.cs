@@ -45,7 +45,10 @@ namespace Client
                 this.RelFilePath = Utilis.AbsToRelativePath(absFilePath);
 
                 this.LastModtime = File.GetLastWriteTime(absFilePath);
-                this.Size = new FileInfo(absFilePath).Length;
+
+                FileInfo f = new FileInfo(absFilePath);
+                this.Size = f.Length;
+                
                 this.md5Calculated = false;
             }
             else
@@ -100,6 +103,5 @@ namespace Client
         {
             return base.GetHashCode() ^ Convert.ToInt32(Size) ^ LastModtime.GetHashCode();
         }
-
     }
 }
