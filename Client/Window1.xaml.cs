@@ -157,6 +157,7 @@ namespace Client
 
         private void BtnStartSynch_Click(object sender, RoutedEventArgs e)
         {
+            XMLManager.SaveToFile(Constants.XmlSavePath + @"\x.xml");
             client.ClientSync(XMLManager, authToken);
         }
 
@@ -268,8 +269,8 @@ namespace Client
             {
                 Path = Constants.PathClient,
 
-                NotifyFilter = NotifyFilters.DirectoryName | NotifyFilters.FileName | NotifyFilters.LastWrite,
-                //Watcher.NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.FileName | NotifyFilters.DirectoryName | NotifyFilters.CreationTime | NotifyFilters.Attributes;
+                NotifyFilter = NotifyFilters.DirectoryName | NotifyFilters.FileName | NotifyFilters.LastWrite | NotifyFilters.CreationTime,
+                //NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.FileName | NotifyFilters.DirectoryName | NotifyFilters.CreationTime | NotifyFilters.Attributes,
                 Filter = "*.*",
                 IncludeSubdirectories = true,
                 InternalBufferSize = 64 * 1024 //max possible buffer size
@@ -304,6 +305,8 @@ namespace Client
         {
             try
             {
+                Logger.Info(e.ChangeType + " " + e.FullPath);
+
                 if (e.ChangeType == WatcherChangeTypes.Changed)
                 {
                     // IGNORO le notifiche di tipo change su directory
@@ -334,8 +337,7 @@ namespace Client
                 }
 
 
-                XMLManager.SaveToFile(Constants.XmlSavePath + @"\x2.xml");
-                Logger.Info(e.ChangeType +" " +  e.FullPath);
+                //XMLManager.SaveToFile(Constants.XmlSavePath + @"\x2.xml");                
 
             }
             //catch (FileNotFoundException ex)
@@ -358,6 +360,8 @@ namespace Client
         {
             try
             {
+                Logger.Info(e.ChangeType + " " + e.OldFullPath + " -> " + e.FullPath);
+
                 if (Utilis.IsDirectory(e.FullPath))
                 {   // Directory
                     XMLManager.RenameDirectory(e.OldName, e.Name);
@@ -367,10 +371,11 @@ namespace Client
                     XMLManager.RenameFile(e.OldName, e.Name);
                 }
 
-                Logger.Info(e.ChangeType + " " + e.FullPath);
+                //XMLManager.SaveToFile(Constants.XmlSavePath + @"\x2.xml");
+                
 
             }
-            catch (FileNotFoundException ex)
+            catch (Exception ex)
             {
                 StackTrace st = new StackTrace(ex, true);
                 StackFrame sf = Utilis.GetFirstValidFrame(st);
