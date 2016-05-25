@@ -41,7 +41,15 @@ namespace Server
         public XmlManager(DirectoryInfo _dir)
         {
             this._xmlDoc = new XDocument(CreateFileSystemXmlTree(_dir));
-            //SaveToFile(@"C:\Users\Utente\Desktop\out.xml");
+        }
+
+        /// <summary>
+        /// Clono un'istanza di XMLmanager
+        /// </summary>
+        /// <param name="doc"></param>
+        public XmlManager(XDocument doc)
+        {
+            this._xmlDoc = doc;
         }
 
         /// <summary>
@@ -123,7 +131,7 @@ namespace Server
 
                         fileElement.SetAttributeValue(FileAttributeName, fname);
                         fileElement.SetAttributeValue(FileAttributeLastModTime, lastModTime.ToString(Constants.XmlDateFormat));
-                        fileElement.SetAttributeValue(FileAttributeSize, fileSize.ToString(Constants.XmlDateFormat));
+                        fileElement.SetAttributeValue(FileAttributeSize, fileSize.ToString());
                         fileElement.SetAttributeValue(FileAttributeChecksum, md5);
 
                         dir.Add(fileElement);
@@ -144,7 +152,7 @@ namespace Server
         {
             using (StreamWriter sw = new StreamWriter(path))
             {
-                sw.WriteLine(@"<dir name = ""ClientSide"">");
+                sw.WriteLine(@"<dir name=""ClientSide"">");
                 sw.WriteLine(@"</dir>");
             }
         }
@@ -160,58 +168,58 @@ namespace Server
             );
         }
 
-        #region Modifiche da FSW
+        //#region Modifiche da FSW
 
-        /// <summary>
-        /// Rinomina l'entry di una directory nell'xml 
-        /// </summary>
-        /// <param name="oldRelPath">Vecchio percorso</param>
-        /// <param name="newRelPath">Nuovo Percorso</param>
-        public void RenameDirectory(string oldRelPath, string newRelPath)
-        {
-            // Nuovo nome della cartella
-            string newName = newRelPath.Split(Constants.PathSeparator.ToCharArray(), StringSplitOptions.RemoveEmptyEntries).Last();
+        ///// <summary>
+        ///// Rinomina l'entry di una directory nell'xml 
+        ///// </summary>
+        ///// <param name="oldRelPath">Vecchio percorso</param>
+        ///// <param name="newRelPath">Nuovo Percorso</param>
+        //public void RenameDirectory(string oldRelPath, string newRelPath)
+        //{
+        //    // Nuovo nome della cartella
+        //    string newName = newRelPath.Split(Constants.PathSeparator.ToCharArray(), StringSplitOptions.RemoveEmptyEntries).Last();
 
-            XElement dirElement = this.getDirectoryElement(oldRelPath);
+        //    XElement dirElement = this.getDirectoryElement(oldRelPath);
 
-            Logger.log("vado a rinominare " + dirElement.Attribute(DirectoryAttributeName));
-            // Modifico il nome dell'attributo
-            dirElement.Attribute(DirectoryAttributeName).Value = newName;
-        }
+        //    Logger.log("vado a rinominare " + dirElement.Attribute(DirectoryAttributeName));
+        //    // Modifico il nome dell'attributo
+        //    dirElement.Attribute(DirectoryAttributeName).Value = newName;
+        //}
 
-        /// <summary>
-        /// Rinomina l'entry di un file nell'xml 
-        /// </summary>
-        /// <param name="oldRelPath">Vecchio percorso</param>
-        /// <param name="newRelPath">Nuovo Percorso</param>
-        public void RenameFile(string oldRelPath, string newRelPath)
-        {
-            // Nome del nuovo file
-            string newName = newRelPath.Split(Constants.PathSeparator.ToCharArray(), StringSplitOptions.RemoveEmptyEntries).Last();
+        ///// <summary>
+        ///// Rinomina l'entry di un file nell'xml 
+        ///// </summary>
+        ///// <param name="oldRelPath">Vecchio percorso</param>
+        ///// <param name="newRelPath">Nuovo Percorso</param>
+        //public void RenameFile(string oldRelPath, string newRelPath)
+        //{
+        //    // Nome del nuovo file
+        //    string newName = newRelPath.Split(Constants.PathSeparator.ToCharArray(), StringSplitOptions.RemoveEmptyEntries).Last();
 
-            XElement fileElement = this.getFileElement(oldRelPath);
+        //    XElement fileElement = this.getFileElement(oldRelPath);
 
-            Logger.log("vado a rinominare " + fileElement.Attribute(FileAttributeName));
-            // Modifico il nome dell'attributo
-            fileElement.Attribute(FileAttributeName).Value = newName;
-        }
+        //    Logger.log("vado a rinominare " + fileElement.Attribute(FileAttributeName));
+        //    // Modifico il nome dell'attributo
+        //    fileElement.Attribute(FileAttributeName).Value = newName;
+        //}
 
-        /// <summary>
-        /// Aggiorno l'entry di un file ricalcolandone l'md5 e data di ultima modifica
-        /// </summary>
-        /// <param name="fa">Classe contenente gli attributi del file</param>
-        public void RefreshFile(FileAttributeHelper fa)
-        {
-            //FileInfo fInfo = new FileInfo(Utilis.RelativeToAbsPath(relPath));
-            XElement fileElement = this.getFileElement(fa.RelFilePath);
+        ///// <summary>
+        ///// Aggiorno l'entry di un file ricalcolandone l'md5 e data di ultima modifica
+        ///// </summary>
+        ///// <param name="fa">Classe contenente gli attributi del file</param>
+        //public void RefreshFile(FileAttributeHelper fa)
+        //{
+        //    //FileInfo fInfo = new FileInfo(Utilis.RelativeToAbsPath(relPath));
+        //    XElement fileElement = this.getFileElement(fa.RelFilePath);
 
-            // Modifico gli attributi
-            fileElement.Attribute(FileAttributeSize).Value = fa.Size.ToString();
-            fileElement.Attribute(FileAttributeLastModTime).Value = fa.LastModtime.ToString();
+        //    // Modifico gli attributi
+        //    fileElement.Attribute(FileAttributeSize).Value = fa.Size.ToString();
+        //    fileElement.Attribute(FileAttributeLastModTime).Value = fa.LastModtime.ToString();
 
-        }
+        //}
 
-        #endregion
+        //#endregion
 
 
         #region Ricerca Elementi
@@ -260,6 +268,7 @@ namespace Server
         #endregion
 
 
+        #region CONFRONTO XML
         /// <summary>
         /// controlla due XML rendendo l'elenco dei files che sono stati aggiunti/modificati
         /// l'elenco viene memorizzato in res (stringa che deve essere passata vuota)
@@ -377,6 +386,8 @@ namespace Server
 
             return counter;
         }
+        #endregion
+
 
         /// <summary>
         /// Ritorna l'md5 dell'XML NORMALIZZATO</summary>
@@ -388,7 +399,123 @@ namespace Server
 
             root.Attribute(XmlManager.DirectoryAttributeName).Value = "";
 
+            // Cancellare le directory vuote
+            removeEmpty(root);
+
+            // Ordinare le cose
+            XmlManager.sortElement(root);
+
             return Utilis.Md5String(doc.ToString());
+        }
+
+        #region NORMALIZZAZIONE
+        /// <summary>
+        /// Cancello le directory vuote dall'xml per la normalizzazione
+        /// </summary>
+        /// <param name="e">La root</param>
+        private int removeEmptySubDir(XElement e)
+        {
+            int numsubFiles = 0;
+            var subdirsC = e.Elements(DirectoryElementName).ToList();
+
+
+            foreach (var subdir in subdirsC)
+            {
+                numsubFiles += removeEmptySubDir(subdir);
+            }
+
+            var subFilesC = e.Elements(FileElementName);
+
+            numsubFiles += subFilesC.Count();
+
+
+            if (numsubFiles == 0)
+                e.Remove();
+
+            return numsubFiles;
+
+        }
+
+        /// <summary>
+        /// Funzione per normalizzare un xml eliminando le sottocartelle vuote
+        /// </summary>
+        /// <param name="root">La ROOT dell'xml</param>
+        private void removeEmpty(XElement root)
+        {
+            var subdirsC = root.Elements(DirectoryElementName);
+
+
+            foreach (var subdir in subdirsC)
+            {
+                removeEmptySubDir(subdir);
+            }
+        }
+
+        /// <summary>
+        /// Ordino un elemento mettendo prima le cartelle (ordinate per nome) e poi i file
+        /// </summary>
+        /// <param name="el">elemento di partenza da ordinare</param>
+        private static void sortElement(XElement el)
+        {
+            // Creo le liste ordinate
+            var subDir = el.Elements(XmlManager.DirectoryElementName).OrderBy(s => (string)s.Attribute(XmlManager.DirectoryAttributeName)).ToList();
+            var subFile = el.Elements(XmlManager.FileElementName).OrderBy(s => (string)s.Attribute(XmlManager.FileAttributeName)).ToList();
+
+            // Cancello il contenuto
+            el.RemoveNodes();
+
+            // Riaggiungo le directory ordinate
+            foreach (var item in subDir)
+            {
+                el.Add(item);
+            }
+
+            // Riaggiungo i file ordinati
+            foreach (var item in subFile)
+            {
+                el.Add(item);
+            }
+
+            // Ricorro sulle sottocartelle
+            foreach (var item in subDir)
+            {
+                sortElement(item);
+            }
+        }
+        #endregion
+
+
+
+        /// <summary>
+        /// Salvo su file una versione normalizzata dell'xml
+        /// </summary>
+        /// <param name="path">Percorso dove salvare l'xml</param>
+        public void SaveToFile(string path)
+        {
+            using (StreamWriter output = new StreamWriter(path))
+            {
+                // "Normalizzo" l'xml andando a cancellare l'attributo della root
+                XDocument doc = new XDocument(this._xmlDoc);
+                XElement root = XmlManager.GetRoot(doc);
+
+                root.Attribute(XmlManager.DirectoryAttributeName).Value = "";
+
+                // Cancellare le directory vuote
+                removeEmpty(root);
+
+                // Ordinare le cose
+                XmlManager.sortElement(root);
+
+
+                output.Write(doc.ToString());
+            }
+        }
+
+
+        #region GETTER
+        public static XElement GetRoot(XDocument xDoc)
+        {
+            return xDoc.Root;
         }
 
         public override string ToString()
@@ -405,21 +532,7 @@ namespace Server
         {
             return _xmlDoc.Element(DirectoryElementName);
         }
-
-        public static XElement GetRoot(XDocument xDoc)
-        {
-            return xDoc.Root;
-        }
-
-        public void SaveToFile(string path)
-        {
-            StreamWriter output = new StreamWriter(path);
-
-            output.Write(this.ToString());
-
-            output.Flush();
-            output.Close();
-        }
+        #endregion
 
     }
 }

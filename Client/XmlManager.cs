@@ -42,6 +42,15 @@ namespace Client
             this._xmlDoc = new XDocument(CreateFileSystemXmlTree(_dir));
             //SaveToFile(@"C:\Users\Utente\Desktop\out.xml");
         }
+
+        /// <summary>
+        /// Clono un'istanza di XMLmanager
+        /// </summary>
+        /// <param name="doc"></param>
+        public XmlManager(XDocument doc)
+        {
+            this._xmlDoc = doc;
+        }
         
 
         private XElement CreateFileSystemXmlTree(DirectoryInfo di)
@@ -180,7 +189,6 @@ namespace Client
 
         #endregion
 
-
         #region Ricerca Elementi
         /// <summary>
         /// Cerco all'interno del documento xml un elemento di tipo directory </summary>
@@ -217,7 +225,7 @@ namespace Client
 
         #endregion
 
-
+        #region CONFRONTO XML
         /// <summary>
         /// controlla due XML rendendo l'elenco dei files che sono stati aggiunti/modificati
         /// l'elenco viene memorizzato in res (stringa che deve essere passata vuota)
@@ -335,6 +343,8 @@ namespace Client
 
             return counter;
         }
+        #endregion
+
 
         /// <summary>
         /// Ritorna l'md5 dell'XML NORMALIZZATO</summary>
@@ -346,7 +356,123 @@ namespace Client
             
             root.Attribute(XmlManager.DirectoryAttributeName).Value = "";
 
+            // Cancellare le directory vuote
+            removeEmpty(root);
+
+            // Ordinare le cose
+            XmlManager.sortElement(root);
+
             return Utilis.Md5String(doc.ToString());
+        }
+
+        #region NORMALIZZAZIONE
+        /// <summary>
+        /// Cancello le directory vuote dall'xml per la normalizzazione
+        /// </summary>
+        /// <param name="e">La root</param>
+        private int removeEmptySubDir(XElement e)
+        {
+            int numsubFiles = 0;
+            var subdirsC = e.Elements(DirectoryElementName).ToList();
+
+
+            foreach (var subdir in subdirsC)
+            {
+                numsubFiles += removeEmptySubDir(subdir);
+            }
+
+            var subFilesC = e.Elements(FileElementName);
+
+            numsubFiles += subFilesC.Count();
+
+
+            if (numsubFiles == 0)
+                e.Remove();
+
+            return numsubFiles;
+
+        }
+
+        /// <summary>
+        /// Funzione per normalizzare un xml eliminando le sottocartelle vuote
+        /// </summary>
+        /// <param name="root">La ROOT dell'xml</param>
+        private void removeEmpty(XElement root)
+        {
+            var subdirsC = root.Elements(DirectoryElementName);
+
+
+            foreach (var subdir in subdirsC)
+            {
+                removeEmptySubDir(subdir);
+            }
+        }
+
+        /// <summary>
+        /// Ordino un elemento mettendo prima le cartelle (ordinate per nome) e poi i file
+        /// </summary>
+        /// <param name="el">elemento di partenza da ordinare</param>
+        private static void sortElement(XElement el)
+        {
+            // Creo le liste ordinate
+            var subDir = el.Elements(XmlManager.DirectoryElementName).OrderBy(s => (string)s.Attribute(XmlManager.DirectoryAttributeName)).ToList();
+            var subFile = el.Elements(XmlManager.FileElementName).OrderBy(s => (string)s.Attribute(XmlManager.FileAttributeName)).ToList();
+
+            // Cancello il contenuto
+            el.RemoveNodes();
+
+            // Riaggiungo le directory ordinate
+            foreach (var item in subDir)
+            {
+                el.Add(item);
+            }
+
+            // Riaggiungo i file ordinati
+            foreach (var item in subFile)
+            {
+                el.Add(item);
+            }
+
+            // Ricorro sulle sottocartelle
+            foreach (var item in subDir)
+            {
+                sortElement(item);
+            }
+        }
+        #endregion
+
+
+
+        /// <summary>
+        /// Salvo su file una versione normalizzata dell'xml
+        /// </summary>
+        /// <param name="path">Percorso dove salvare l'xml</param>
+        public void SaveToFile(string path)
+        {
+            using(StreamWriter output = new StreamWriter(path))
+            {
+                // "Normalizzo" l'xml andando a cancellare l'attributo della root
+                XDocument doc = new XDocument(this._xmlDoc);
+                XElement root = XmlManager.GetRoot(doc);
+
+                root.Attribute(XmlManager.DirectoryAttributeName).Value = "";
+
+                // Cancellare le directory vuote
+                removeEmpty(root);
+
+                // Ordinare le cose
+                XmlManager.sortElement(root);
+                
+
+                output.Write(doc.ToString());
+            }
+        }
+                
+
+        #region GETTER
+        public static XElement GetRoot(XDocument xDoc)
+        {
+            return xDoc.Root;
         }
 
         public override string ToString()
@@ -363,21 +489,8 @@ namespace Client
         {
             return _xmlDoc.Element(DirectoryElementName);
         }
-
-        public static XElement GetRoot(XDocument xDoc)
-        {
-            return xDoc.Root;
-        }
-
-        public void SaveToFile(string path)
-        {
-            StreamWriter output = new StreamWriter(path);
-
-            output.Write(this.ToString());
-
-            output.Flush();
-            output.Close();
-        }
+        #endregion
 
     }
+
 }

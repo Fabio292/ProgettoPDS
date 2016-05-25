@@ -47,7 +47,7 @@ namespace Client
         /// <summary>
         /// Formato della stringa della data nell'xml
         /// </summary>
-        public const string XmlDateFormat = @"yyyy'-'MM'-'dd'T'HH':'mm':'ssK";
+        public const string XmlDateFormat = @"yyyy'-'MM'-'dd'T'HH':'mm':'ss";
 
         /// <summary>
         /// Tempo di refresh per la tree view in ms

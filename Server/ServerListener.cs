@@ -210,6 +210,8 @@ namespace Server
 
         }
 
+
+
         #region Gestione utente
 
         /// <summary>Loggo l'utente secondo i parametri passati</summary>
@@ -449,7 +451,6 @@ namespace Server
         #endregion
 
 
-
         /// <summary>
         /// Controllo se posso iniziare una sessione di sincronizzazione 
         /// </summary>
@@ -572,12 +573,12 @@ namespace Server
                     // TODO rigenerare l'xml dal DB
 
                     // Ricevo l'xml dal client
-                    XmlCommand lastXmlClient = new XmlCommand(Utilis.GetCmdSync(client));
+                    //XmlCommand lastXmlClient = new XmlCommand(Utilis.GetCmdSync(client));
 
-                    if (lastXmlClient == null)
-                        throw new Exception("Aspettavo un comando contenente un Xml, ricevuto nulla");
-                    if (lastXmlClient.kmd != CmdType.Xml)
-                        throw new Exception("Aspettavo un comando di tipo Xml, ricevuto " + lastXmlClient.kmd);
+                    //if (lastXmlClient == null)
+                    //    throw new Exception("Aspettavo un comando contenente un Xml, ricevuto nulla");
+                    //if (lastXmlClient.kmd != CmdType.Xml)
+                    //    throw new Exception("Aspettavo un comando di tipo Xml, ricevuto " + lastXmlClient.kmd);
 
                     string xmlPath = Constants.PathServerFile + Constants.PathSeparator + UID + ".xml";
                     //using (StreamWriter sw = new StreamWriter(xmlPath))
@@ -586,7 +587,7 @@ namespace Server
                     //}
 
                     XmlManager aus = new XmlManager(connessione, UID, lastVersionID);
-                    aus.SaveToFile(lastXmlClient.Xml);
+                    aus.SaveToFile(xmlPath);
                     #endregion
 
                     // Finalizzo la sincronizzazione 

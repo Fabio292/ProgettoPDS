@@ -320,6 +320,8 @@ namespace Client
             }
             #endregion
 
+            Logger.Info("File inviati al server");
+
             #region Chiusura synch
             // Chiudo la sessione di sincronizzazione
             resp = Utilis.GetCmdSync(conn);
@@ -330,11 +332,12 @@ namespace Client
             }
 
             // Mando l'xml
-            XmlCommand lastXml = new XmlCommand(xmlClient, authToken);
-            Utilis.SendCmdSync(conn, lastXml);
+            //XmlCommand lastXml = new XmlCommand(xmlClient, authToken);
+            //Utilis.SendCmdSync(conn, lastXml);
 
             Command end = new Command(CmdType.endSynch);
             Utilis.SendCmdSync(conn, end);
+            Logger.Info("Synch terminata");
             #endregion
             
         }
