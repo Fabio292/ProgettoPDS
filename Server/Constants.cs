@@ -93,6 +93,21 @@ namespace Server
         /// Dimensione di un HASH MD5
         /// </summary>
         public const int MD5OutputLegth = 32;
+
+        /// <summary>
+        /// Lunghezza dell'auth token 
+        /// </summary>
+        public const int AuthTokenLength = 12;
+
+        /// <summary>
+        /// Auth token di default, INVALIDO
+        /// </summary>
+        public const string DefaultAuthToken = "------------";
+
+        /// <summary>
+        /// AuthToken del server, per la mutua autenticazione
+        /// </summary>
+        public const string ServerAuthToken = "AK3Y8TPZE9XT";
     }
 
     /// <summary>

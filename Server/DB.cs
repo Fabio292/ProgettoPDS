@@ -71,6 +71,20 @@ namespace Server
                             PRAGMA foreign_keys = off;
                             BEGIN TRANSACTION;
 
+                            -- Table: Utenti
+                            DROP TABLE IF EXISTS Utenti;
+
+                            CREATE TABLE Utenti (
+                                UID      INTEGER NOT NULL
+                                                    PRIMARY KEY AUTOINCREMENT,
+                                Username TEXT    NOT NULL
+                                                    UNIQUE,
+                                Password TEXT    NOT NULL,
+                                AuthToken STRING  NOT NULL,
+                                InSynch  BOOLEAN DEFAULT FALSE
+                                                    NOT NULL
+                            );
+
                             -- Table: Versioni
                             DROP TABLE IF EXISTS Versioni;
 
@@ -96,19 +110,6 @@ namespace Server
                                 REFERENCES Utenti
                             );
 
-
-                            -- Table: Utenti
-                            DROP TABLE IF EXISTS Utenti;
-
-                            CREATE TABLE Utenti (
-                                UID      INTEGER NOT NULL
-                                                    PRIMARY KEY AUTOINCREMENT,
-                                Username TEXT    NOT NULL
-                                                    UNIQUE,
-                                Password TEXT    NOT NULL,
-                                InSynch  BOOLEAN DEFAULT FALSE
-                                                    NOT NULL
-                            );
 
 
                             COMMIT TRANSACTION;

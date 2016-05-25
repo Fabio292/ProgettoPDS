@@ -11,6 +11,7 @@ namespace Client
     {
         private CmdType _kmd;
         private Int64 _payloadLength;
+        private string _authToken;
         private string _payload;
 
 
@@ -35,6 +36,20 @@ namespace Client
             set { _kmd = value; }
         }
 
+        public string AuthToken
+        {
+            get
+            {
+                return _authToken;
+            }
+
+            set
+            {
+                _authToken = value;
+            }
+        }
+
+
         /// <summary>
         /// Costruisco un generico comando
         /// </summary>
@@ -44,10 +59,12 @@ namespace Client
         {
             this.Payload = _payload;
             this._kmd = _kmd;
+            this._authToken = Constants.DefaultAuthToken;
         }
 
         public Command(CmdType _kmd)
         {
+            this._authToken = Constants.DefaultAuthToken;
             this.Payload = "";
             this._kmd = _kmd;
         }
@@ -57,13 +74,15 @@ namespace Client
         /// </summary>
         public Command()
         {
+            this._authToken = Constants.DefaultAuthToken;
             this.Payload = "";
             this._kmd = CmdType.ok;
+
         }
 
         public override string ToString()
         {
-            return _kmd + _payloadLength.ToString() + _payload;
+            return _kmd + _payloadLength.ToString() + _authToken + _payload;
         }
 
         /// <summary>
@@ -72,15 +91,22 @@ namespace Client
         public byte[] ToBytes()
         {
             byte[] ret = new byte[this.GetTotalLength()];
+            int offset = 0;
 
             //Copio nel buffer il codice del comando
-            Buffer.BlockCopy(BitConverter.GetBytes((int)this.kmd), 0, ret, 0, Constants.CommandTypeBytes);
+            Buffer.BlockCopy(BitConverter.GetBytes((int)this.kmd), 0, ret, offset, Constants.CommandTypeBytes);
+            offset += Constants.CommandTypeBytes;
 
             //Copio nel buffer la dimensione del Payload
-            Buffer.BlockCopy(BitConverter.GetBytes(this.PayloadLength), 0, ret, Constants.CommandTypeBytes, Constants.CommandLengthBytes);
+            Buffer.BlockCopy(BitConverter.GetBytes(this.PayloadLength), 0, ret, offset, Constants.CommandLengthBytes);
+            offset += Constants.CommandLengthBytes;
+
+            //Copio nel buffer l'auth token
+            Buffer.BlockCopy(Encoding.UTF8.GetBytes(this.AuthToken), 0, ret, offset, Constants.AuthTokenLength);
+            offset += Constants.AuthTokenLength;
 
             //Copio nel buffer il Payload
-            Buffer.BlockCopy(Encoding.UTF8.GetBytes(this.Payload), 0, ret, Constants.CommandTypeBytes + Constants.CommandLengthBytes, Convert.ToInt32(this.PayloadLength));
+            Buffer.BlockCopy(Encoding.UTF8.GetBytes(this.Payload), 0, ret, offset, Convert.ToInt32(this.PayloadLength));
 
             return ret;
         }
@@ -90,7 +116,7 @@ namespace Client
         /// </summary>
         public Int32 GetTotalLength()
         {
-            return Constants.CommandTypeBytes + Constants.CommandLengthBytes + Convert.ToInt32(_payloadLength);
+            return Constants.CommandTypeBytes + Constants.CommandLengthBytes + Constants.AuthTokenLength +  Convert.ToInt32(_payloadLength);
         }
     }
 
@@ -383,7 +409,7 @@ namespace Client
         /// </summary>
         /// <param name="relPath">Percorso relativo (senza il '\' iniziale) del file</param>
         /// <exception cref="ArgumentException">Eccezione lanciata quando il percorso del file non è valido</exception>
-        public FileInfoCommand(string relPath) : base()
+        public FileInfoCommand(string relPath, string authToken) : base()
         {
             string absPath = Utilis.RelativeToAbsPath(relPath);
 
@@ -392,6 +418,8 @@ namespace Client
                 throw new ArgumentException("Il percorso passato come parametro non esiste");
             if (Utilis.IsDirectory(absPath) == true)
                 throw new ArgumentException("Il percorso passato come parametro è relativo ad una cartella");
+            if(authToken.Length != Constants.AuthTokenLength)
+                throw new ArgumentException("Auth token non valido");
 
             FileInfo fInf = new FileInfo(absPath);
 
@@ -402,6 +430,7 @@ namespace Client
             this._relFilePath = relPath;
             this._fileSize = fInf.Length;
             this._lastModTime = Utilis.NormalizeDateTime(fInf.LastWriteTime);
+            this.AuthToken = authToken;
 
             // Salvo il payload
             this.Payload = this.generatePayload();
@@ -417,9 +446,11 @@ namespace Client
             if ((cmd == null) || (cmd.kmd != CmdType.sendFile))
                 throw new ArgumentException("Il comando passato è vuoto oppure non di tipo sendFile");
 
+            // Salvo l'auth token
+            this.AuthToken = cmd.AuthToken;
+
             // Imposto il tipo di comando
             this.kmd = CmdType.sendFile;
-
 
             // Estraggo i campi
             this.extractField(cmd.Payload);
@@ -494,8 +525,12 @@ namespace Client
         /// Creo un oggetto XmlDigestCommand passando l'xml relativo
         /// </summary>
         /// <param name="errC">Il codice dell'errore da segnalare</param>
-        public XmlDigestCommand(XmlManager xml) : base()
+        public XmlDigestCommand(XmlManager xml, string authToken) : base()
         {
+            if (authToken.Length != Constants.AuthTokenLength)
+                throw new ArgumentException("Auth token non valido");
+
+            this.AuthToken = authToken;
             this.kmd = CmdType.xmlDigest;
 
             string md5Xml = xml.XMLDigest();
@@ -512,6 +547,7 @@ namespace Client
             try
             {
                 this.Digest = extractField(cmd.Payload);
+                this.AuthToken = cmd.AuthToken;
             }
             catch (Exception)
             {
@@ -554,8 +590,12 @@ namespace Client
         /// <summary>
         /// Creo un oggetto XmlDigestCommand passando l'xml relativo
         /// </summary>
-        public XmlCommand(XmlManager xml) : base()
+        public XmlCommand(XmlManager xml, string authToken) : base()
         {
+            if (authToken.Length != Constants.AuthTokenLength)
+                throw new ArgumentException("Auth token non valido");
+
+            this.AuthToken = authToken;
             this.kmd = CmdType.Xml;
 
             // Metto l'XML nel payload del comando
@@ -573,6 +613,7 @@ namespace Client
             try
             {
                 this.Xml = extractField(cmd.Payload);
+                this.AuthToken = cmd.AuthToken;
             }
             catch (Exception)
             {
@@ -614,8 +655,13 @@ namespace Client
         /// <summary>
         /// Creo un oggetto FileNumCommand passando il numero di file
         /// </summary>
-        public FileNumCommand(int num) : base()
+        public FileNumCommand(int num, string authToken) : base()
         {
+            if (authToken.Length != Constants.AuthTokenLength)
+                throw new ArgumentException("Auth token non valido");
+
+            this.AuthToken = authToken;
+
             this.kmd = CmdType.numFile;
 
             this.NumFiles = num;
@@ -632,6 +678,7 @@ namespace Client
             try
             {
                 this.NumFiles = extractField(cmd.Payload);
+                this.AuthToken = cmd.AuthToken;
             }
             catch (Exception)
             {

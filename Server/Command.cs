@@ -4,11 +4,14 @@ using System.Text;
 
 namespace Server
 {
-
+    /// <summary>
+    /// Il comando è composto da [tipo|auth_token|lunghezza_payload|payload]
+    /// </summary>
     class Command
     {
         private CmdType _kmd;
         private Int64 _payloadLength;
+        private string _authToken;
         private string _payload;
 
 
@@ -33,6 +36,20 @@ namespace Server
             set { _kmd = value; }
         }
 
+        public string AuthToken
+        {
+            get
+            {
+                return _authToken;
+            }
+
+            set
+            {
+                _authToken = value;
+            }
+        }
+
+
         /// <summary>
         /// Costruisco un generico comando
         /// </summary>
@@ -42,10 +59,12 @@ namespace Server
         {
             this.Payload = _payload;
             this._kmd = _kmd;
+            this._authToken = Constants.DefaultAuthToken;
         }
 
         public Command(CmdType _kmd)
         {
+            this._authToken = Constants.DefaultAuthToken;
             this.Payload = "";
             this._kmd = _kmd;
         }
@@ -55,13 +74,15 @@ namespace Server
         /// </summary>
         public Command()
         {
+            this._authToken = Constants.DefaultAuthToken;
             this.Payload = "";
             this._kmd = CmdType.ok;
+
         }
 
         public override string ToString()
         {
-            return _kmd + _payloadLength.ToString() + _payload;
+            return _kmd + _payloadLength.ToString() + _authToken + _payload;
         }
 
         /// <summary>
@@ -70,15 +91,22 @@ namespace Server
         public byte[] ToBytes()
         {
             byte[] ret = new byte[this.GetTotalLength()];
+            int offset = 0;
 
             //Copio nel buffer il codice del comando
-            Buffer.BlockCopy(BitConverter.GetBytes((int)this.kmd), 0, ret, 0, Constants.CommandTypeBytes);
+            Buffer.BlockCopy(BitConverter.GetBytes((int)this.kmd), 0, ret, offset, Constants.CommandTypeBytes);
+            offset += Constants.CommandTypeBytes;
 
             //Copio nel buffer la dimensione del Payload
-            Buffer.BlockCopy(BitConverter.GetBytes(this.PayloadLength), 0, ret, Constants.CommandTypeBytes, Constants.CommandLengthBytes);
+            Buffer.BlockCopy(BitConverter.GetBytes(this.PayloadLength), 0, ret, offset, Constants.CommandLengthBytes);
+            offset += Constants.CommandLengthBytes;
+
+            //Copio nel buffer l'auth token
+            Buffer.BlockCopy(Encoding.UTF8.GetBytes(this.AuthToken), 0, ret, offset, Constants.AuthTokenLength);
+            offset += Constants.AuthTokenLength;
 
             //Copio nel buffer il Payload
-            Buffer.BlockCopy(Encoding.UTF8.GetBytes(this.Payload), 0, ret, Constants.CommandTypeBytes + Constants.CommandLengthBytes, Convert.ToInt32(this.PayloadLength));
+            Buffer.BlockCopy(Encoding.UTF8.GetBytes(this.Payload), 0, ret, offset, Convert.ToInt32(this.PayloadLength));
 
             return ret;
         }
@@ -88,7 +116,7 @@ namespace Server
         /// </summary>
         public Int32 GetTotalLength()
         {
-            return Constants.CommandTypeBytes + Constants.CommandLengthBytes + Convert.ToInt32(_payloadLength);
+            return Constants.CommandTypeBytes + Constants.CommandLengthBytes + Constants.AuthTokenLength + Convert.ToInt32(_payloadLength);
         }
     }
 
@@ -318,11 +346,6 @@ namespace Server
     /// </summary>
     class FileInfoCommand : Command
     {
-        //#region Dimensioni Header
-        //private static readonly int FilePathLengthSize = sizeof(int);        //sizeof(typeof(string.length))
-        //private static readonly int FileSizeLength = sizeof(long);
-        //private static readonly int LastModTimeLenghSize = sizeof(int);      //sizeof(typeof(string.length))
-        //#endregion
 
         private string _relFilePath;
         private Int64 _fileSize;
@@ -386,7 +409,7 @@ namespace Server
         /// </summary>
         /// <param name="relPath">Percorso relativo (senza il '\' iniziale) del file</param>
         /// <exception cref="ArgumentException">Eccezione lanciata quando il percorso del file non è valido</exception>
-        public FileInfoCommand(string relPath) : base()
+        public FileInfoCommand(string relPath, string authToken) : base()
         {
             string absPath = Utilis.RelativeToAbsPath(relPath);
 
@@ -395,6 +418,8 @@ namespace Server
                 throw new ArgumentException("Il percorso passato come parametro non esiste");
             if (Utilis.IsDirectory(absPath) == true)
                 throw new ArgumentException("Il percorso passato come parametro è relativo ad una cartella");
+            if (authToken.Length != Constants.AuthTokenLength)
+                throw new ArgumentException("Auth token non valido");
 
             FileInfo fInf = new FileInfo(absPath);
 
@@ -405,6 +430,7 @@ namespace Server
             this._relFilePath = relPath;
             this._fileSize = fInf.Length;
             this._lastModTime = Utilis.NormalizeDateTime(fInf.LastWriteTime);
+            this.AuthToken = authToken;
 
             // Salvo il payload
             this.Payload = this.generatePayload();
@@ -420,9 +446,11 @@ namespace Server
             if ((cmd == null) || (cmd.kmd != CmdType.sendFile))
                 throw new ArgumentException("Il comando passato è vuoto oppure non di tipo sendFile");
 
+            // Salvo l'auth token
+            this.AuthToken = cmd.AuthToken;
+
             // Imposto il tipo di comando
             this.kmd = CmdType.sendFile;
-
 
             // Estraggo i campi
             this.extractField(cmd.Payload);
@@ -430,35 +458,6 @@ namespace Server
             // Se arrivo a questo punto ho finito di leggere il comando ricevuto
         }
 
-        ///// <summary>
-        ///// Estraggo la dimensione dei campi dal Payload
-        ///// </summary>
-        //private void extractFieldSize(string payloadP, out int lenRelPath, out int lenLastModTime)
-        //{
-        //    try
-        //    {
-        //        // Estraggo le dimensioni
-        //        lenRelPath = BitConverter.ToInt32(Encoding.UTF8.GetBytes(payloadP.Substring(0, FileInfoCommand.FilePathLengthSize)), 0);
-
-        //        // La dimensione della data si trova dopo i campi relPath(+4 byte per la sua dimensione) e fileSize (8 byte)
-        //        int lastModTimeSizeStartIndex = lenRelPath + FileInfoCommand.FilePathLengthSize + FileInfoCommand.FileSizeLength;
-        //        lenLastModTime = BitConverter.ToInt32(Encoding.UTF8.GetBytes(payloadP.Substring(lastModTimeSizeStartIndex, FileInfoCommand.LastModTimeLenghSize)), 0);
-
-        //        // Controllo se le dimensioni sono valide
-        //        if (lenRelPath < 0 || lenLastModTime < 0)
-        //            throw new Exception("Lunghezza campi negativa");
-
-        //        //Controllo se le dimensioni sono coerenti
-        //        Int32 expectedPayloadSize = FileInfoCommand.FilePathLengthSize + FileInfoCommand.FileSizeLength + FileInfoCommand.LastModTimeLenghSize //header size
-        //                                    + lenRelPath + lenLastModTime;
-        //        if (payloadP.Length != expectedPayloadSize)
-        //            throw new Exception("La dimensione del payload non è corretta");
-        //    }
-        //    catch (Exception e)
-        //    {
-        //        throw new ArgumentException("Il comando passato non è formattato correttamente (" + e.Message + ")");
-        //    }
-        //}
 
         /// <summary>
         /// Estraggo il valore dei campi e lo vado a salvare direttamente nelle proprietà
@@ -474,7 +473,7 @@ namespace Server
 
             // Estraggo i campi
             this._relFilePath = token[0];
-                            
+
             try
             {
                 this._fileSize = Int64.Parse(token[1]);
@@ -501,16 +500,6 @@ namespace Server
             ret += FileInfoCommand.cmdSeparator;
             ret += this._lastModTime.ToString();
 
-            //string lastModTimeString = this._lastModTime.ToString();
-
-            //Int32 lenRelPath = this._relFilePath.Length;
-            //Int32 lenLastModTime = lastModTimeString.Length;
-
-            //ret += Encoding.UTF8.GetString(BitConverter.GetBytes(lenRelPath));
-            //ret += this._relFilePath;
-            //ret += Encoding.UTF8.GetString(BitConverter.GetBytes(this._fileSize));
-            //ret += Encoding.UTF8.GetString(BitConverter.GetBytes(lenLastModTime));
-            //ret += lastModTimeString;
 
             return ret;
         }
@@ -536,8 +525,12 @@ namespace Server
         /// Creo un oggetto XmlDigestCommand passando l'xml relativo
         /// </summary>
         /// <param name="errC">Il codice dell'errore da segnalare</param>
-        public XmlDigestCommand(XmlManager xml) : base()
+        public XmlDigestCommand(XmlManager xml, string authToken) : base()
         {
+            if (authToken.Length != Constants.AuthTokenLength)
+                throw new ArgumentException("Auth token non valido");
+
+            this.AuthToken = authToken;
             this.kmd = CmdType.xmlDigest;
 
             string md5Xml = xml.XMLDigest();
@@ -554,6 +547,7 @@ namespace Server
             try
             {
                 this.Digest = extractField(cmd.Payload);
+                this.AuthToken = cmd.AuthToken;
             }
             catch (Exception)
             {
@@ -569,7 +563,9 @@ namespace Server
         {
             if (payloadP.Length != Constants.MD5OutputLegth)
                 throw new Exception();
-            
+
+            //TODO controllo la validità con una regex? ToUpper()[A-Z0-9]{md5Length}
+
             return payloadP;
         }
 
@@ -594,8 +590,12 @@ namespace Server
         /// <summary>
         /// Creo un oggetto XmlDigestCommand passando l'xml relativo
         /// </summary>
-        public XmlCommand(XmlManager xml) : base()
+        public XmlCommand(XmlManager xml, string authToken) : base()
         {
+            if (authToken.Length != Constants.AuthTokenLength)
+                throw new ArgumentException("Auth token non valido");
+
+            this.AuthToken = authToken;
             this.kmd = CmdType.Xml;
 
             // Metto l'XML nel payload del comando
@@ -613,6 +613,7 @@ namespace Server
             try
             {
                 this.Xml = extractField(cmd.Payload);
+                this.AuthToken = cmd.AuthToken;
             }
             catch (Exception)
             {
@@ -654,8 +655,13 @@ namespace Server
         /// <summary>
         /// Creo un oggetto FileNumCommand passando il numero di file
         /// </summary>
-        public FileNumCommand(int num) : base()
+        public FileNumCommand(int num, string authToken) : base()
         {
+            if (authToken.Length != Constants.AuthTokenLength)
+                throw new ArgumentException("Auth token non valido");
+
+            this.AuthToken = authToken;
+
             this.kmd = CmdType.numFile;
 
             this.NumFiles = num;
@@ -672,6 +678,7 @@ namespace Server
             try
             {
                 this.NumFiles = extractField(cmd.Payload);
+                this.AuthToken = cmd.AuthToken;
             }
             catch (Exception)
             {

@@ -29,8 +29,9 @@ namespace Client
 
         static System.Timers.Timer TreeViewRefreshTimer;
 
-        private string savedUsername = "";
-        private string savedPwd = "";
+        //private string savedUsername = "";
+        //private string savedPwd = "";
+        private string authToken = Constants.DefaultAuthToken;
 
         #region COSTRUTTORE - USCITA
         public Window1()
@@ -87,8 +88,8 @@ namespace Client
                 
                 using (StreamReader sr = new StreamReader("credenziali.dat"))
                 {
-                    savedUsername = sr.ReadLine();
-                    savedPwd = sr.ReadLine();
+                    string savedUsername = sr.ReadLine();
+                    string savedPwd = sr.ReadLine();
 
                     TXTUsernameInserito.Text = savedUsername;
                     TXTPasswordInserita.Text = savedPwd;
@@ -156,8 +157,7 @@ namespace Client
 
         private void BtnStartSynch_Click(object sender, RoutedEventArgs e)
         {
-            client.Connect();
-            client.ClientSync(XMLManager);
+            client.ClientSync(XMLManager, authToken);
         }
 
 
@@ -413,99 +413,91 @@ namespace Client
         }
         #endregion
 
+        #region User Interaction
         /// <summary>
         /// funzione chiamata al premere del pulsante Login, controlla i dati inseriti e permette l'accesso a Window1
         /// (sia per la checkLogin sia per la sendRegistration)
         /// </summary>
         private void checkLogin(object sender, RoutedEventArgs e)
         {
+            string username = "";
+            string pwd = "";
+
             #region Validazione input
-            string username = TXTUsernameInserito.Text;
-            string pwd = TXTPasswordInserita.Text;
-
-            int usnLen = username.Length;
-            if (usnLen < Constants.MinUsernameLength || usnLen > Constants.MaxUsernameLength)
-            {
-                TABControl.SelectedIndex = 0;
-                Logger.Error("lunghezza username non valida" + username);
-                System.Windows.MessageBox.Show("lunghezza username non valida" + username);
-                return;
-            }
-
-            int pwdLen = pwd.Length;
-            if (pwdLen < Constants.MinPasswordLength || pwdLen > Constants.MaxPasswordLength)
-            {
-                TABControl.SelectedIndex = 0;
-                Logger.Error("lunghezza password non valida" + pwd);
-                System.Windows.MessageBox.Show("lunghezza password non valida" + pwd);
-                return;
-            }
-            
-            // Salvo le credenziali su file per ricordarmele in futuro
-            if(ChkRicorda.IsChecked == true)
-            {
-                // Salvo le credenziali su file
-                //using(FileStream fs = new FileStream("credenziali.dat", FileMode.OpenOrCreate))
-                using(StreamWriter sw = new StreamWriter("credenziali.dat", false))
-                {
-                    sw.WriteLine(username);
-                    sw.WriteLine(pwd);
-                }
-
-            }
-
-            #endregion
-
             try
             {
-                #region Invio comando
-                // creazione del comando di login
-                // username e password nulli o troppo corti vengono gestiti sopra
-                SendCredentials loginCmd = new SendCredentials(username, pwd, CmdType.login);
+                username = TXTUsernameInserito.Text;
+                pwd = TXTPasswordInserita.Text;
 
-                client.Connect();
-
-                //invio il comando al server
-                Utilis.SendCmdSync(client.getTcpClient(), loginCmd);
-                Logger.Debug("il comando inviato è:\nCOMANDO: " + loginCmd.kmd + "\nPAYLOAD: " + loginCmd.Payload + "\nPAYLOADLENGTH: " + loginCmd.PayloadLength + "\n");
-                #endregion
-
-                #region Ricezione risposta
-
-                Command answer = Utilis.GetCmdSync(client.getTcpClient());
-
-                if (answer == null)
-                    throw new Exception("Aspettavo un comando di risposta dal server a seguito del login, ricevuto nulla");                    
-
-                switch (answer.kmd)
+                int usnLen = username.Length;
+                if (usnLen < Constants.MinUsernameLength || usnLen > Constants.MaxUsernameLength)
                 {
-                    case CmdType.error:
-                        TABControl.SelectedIndex = 0;
-                        throw new Exception("Credenziali errate");
-
-                    case CmdType.ok:
-                        Logger.Info("login effettuato correttamente");
-                        TABControl.SelectedIndex = 2;
-                        break;
-
-                    default:
-                        throw new Exception("Mi aspettavo (error|ok) Ricevuto " + Utilis.Cmd2String(answer.kmd));
+                    TABControl.SelectedIndex = 0;
+                    Logger.Error("lunghezza username non valida" + username);
+                    System.Windows.MessageBox.Show("lunghezza username non valida" + username);
+                    return;
                 }
-                client.Disconnect();
-                #endregion
 
-               
-                client.ClientSync(XMLManager);
-                
+                int pwdLen = pwd.Length;
+                if (pwdLen < Constants.MinPasswordLength || pwdLen > Constants.MaxPasswordLength)
+                {
+                    TABControl.SelectedIndex = 0;
+                    Logger.Error("lunghezza password non valida" + pwd);
+                    System.Windows.MessageBox.Show("lunghezza password non valida" + pwd);
+                    return;
+                }
+            
+                // Salvo le credenziali su file per ricordarmele in futuro
+                if(ChkRicorda.IsChecked == true)
+                {
+                    // Salvo le credenziali su file
+                    //using(FileStream fs = new FileStream("credenziali.dat", FileMode.OpenOrCreate))
+                    using(StreamWriter sw = new StreamWriter("credenziali.dat", false))
+                    {
+                        sw.WriteLine(username);
+                        sw.WriteLine(pwd);
+                    }
+                }
             }
             catch (Exception ex)
             {
-                // Disconnetto il client in caso di errore
-                client.Disconnect();
-
                 //TODO visualizzare all'utente?
                 System.Windows.MessageBox.Show(ex.Message, "Errore Login", MessageBoxButton.OK, MessageBoxImage.Error);
+
+                StackTrace st = new StackTrace(ex, true);
+                StackFrame sf = Utilis.GetFirstValidFrame(st);
+
+                Logger.Error("[" + Path.GetFileName(sf.GetFileName()) + "(" + sf.GetFileLineNumber() + ")]: " + ex.Message);
+
+                // Ritorno alla schermata di login
+                TABControl.SelectedIndex = 0;
+                return;
+            }
+            #endregion
+            
+
+            if(client.ClientLogin(username, pwd, ref this.authToken) == true)
+            {
+                // Login OK
+                TABControl.SelectedIndex = 2;
+            }
+            else
+            {
+                TABControl.SelectedIndex = 0;
+                return;
+            }
                 
+                
+
+            try
+            {
+                client.ClientSync(XMLManager, this.authToken);
+            }
+            catch (Exception ex)
+            {
+                //TODO visualizzare all'utente?
+                System.Windows.MessageBox.Show(ex.Message, "Errore Login", MessageBoxButton.OK, MessageBoxImage.Error);
+
                 StackTrace st = new StackTrace(ex, true);
                 StackFrame sf = Utilis.GetFirstValidFrame(st);
 
@@ -515,112 +507,56 @@ namespace Client
                 TABControl.SelectedIndex = 0;
             }
         }
-
-
         
-
         /// <summary>
         /// funzione chiamata al premere del pulsante Registrati, controlla i dati inseriti e permette l'accesso a MainWindow
         /// </summary>
         private void sendRegistration(object sender, RoutedEventArgs e)
         {
+            string username = "";
+            string password = "";
+            string passwordRep = "";
+
             #region Validazione input
-            string username = TXTusernameReg.Text;
-            string password = TXTPwdReg.Text;
-            string passwordRep = TXTPwdRepReg.Text;
-
-
-            int usnLen = username.Length;
-            if (usnLen < Constants.MinUsernameLength || usnLen > Constants.MaxUsernameLength)
-            {
-                TABControl.SelectedIndex = 1;
-                Logger.Error("lunghezza username non valida" + usnLen);
-                System.Windows.MessageBox.Show("lunghezza username non valida" + usnLen);
-                return;
-            }
-
-            // Test password uguale passwordRep
-            if (password.CompareTo(passwordRep) != 0)
-            {
-                TABControl.SelectedIndex = 1;
-                Logger.Error("Le due password non corrispondono");
-                System.Windows.MessageBox.Show("Le due password non corrispondono");
-                //cancello i due campi
-                TXTPwdReg.Text= "";
-                TXTPwdRepReg.Text= "";
-                return;
-            }
-
-            int pwdLen = password.Length;
-            if (pwdLen < Constants.MinPasswordLength || pwdLen > Constants.MaxPasswordLength)
-            {
-                TABControl.SelectedIndex = 1;
-                Logger.Error("lunghezza password non valida" + pwdLen);
-                System.Windows.MessageBox.Show("lunghezza password non valida" + pwdLen);
-                return;
-            }
-            #endregion
-
             try
             {
-                #region Invio comando
-                // username e password nulli o troppo corti vengono gestiti dalla classe SendCredentials
-                // il formato corretto viene gestito dalla classe SendCredentials
-                SendCredentials regCmd = new SendCredentials(username, password, CmdType.registration);
+                username = TXTusernameReg.Text;
+                password = TXTPwdReg.Text;
+                passwordRep = TXTPwdRepReg.Text;
 
-                client.Connect();
 
-                // Invio il comando al server
-                Utilis.SendCmdSync(client.getTcpClient(), regCmd);
-                Logger.Debug("il comando inviato è:\nCOMANDO: " + regCmd.kmd + "\nPAYLOAD: " + regCmd.Payload + "\nPAYLOADLENGTH: " + regCmd.PayloadLength + "\n");
-                #endregion
-
-                #region RISPOSTA REGISTRAZIONE
-                Command answer = Utilis.GetCmdSync(client.getTcpClient());
-
-                if (answer == null)
-                    throw new Exception("Aspettavo un comando di risposta dal server a seguito del login, ricevuto nulla");
-
-                switch (answer.kmd)
+                int usnLen = username.Length;
+                if (usnLen < Constants.MinUsernameLength || usnLen > Constants.MaxUsernameLength)
                 {
-                    case CmdType.error:
-                        ErrorCommand errCmd = new ErrorCommand(answer);
-                        string errMsg = "";
-
-                        switch (errCmd.Code)
-                        {
-                            case ErrorCode.usernameAlreadyPresent:
-                                errMsg = "Username gia utilizzato, scegline un altro";
-                            break;
-
-                            default:
-                                errMsg = "Errore durante la registrazione (" + Utilis.Err2String(errCmd.Code) + ")";
-                            break;
-                        }
-                        
-                        TABControl.SelectedIndex = 1;
-                        throw new Exception(errMsg);
-
-
-                    case CmdType.ok:
-                        Logger.Info("registrazione effettuata correttamente");
-                        //TODO Invece che andare al main lo mando alla configurazione
-                        TABControl.SelectedIndex = 2;
-                        break;
-
-                    default:
-                        throw new Exception("Mi aspettavo (error|ok) Ricevuto " + Utilis.Cmd2String(answer.kmd));
+                    TABControl.SelectedIndex = 1;
+                    Logger.Error("lunghezza username non valida" + usnLen);
+                    System.Windows.MessageBox.Show("lunghezza username non valida" + usnLen);
+                    return;
                 }
 
-                #endregion
-                
-                //TODO mando l'utente alla configurazione dell'applicazione
+                // Test password uguale passwordRep
+                if (password.CompareTo(passwordRep) != 0)
+                {
+                    TABControl.SelectedIndex = 1;
+                    Logger.Error("Le due password non corrispondono");
+                    System.Windows.MessageBox.Show("Le due password non corrispondono");
+                    //cancello i due campi
+                    TXTPwdReg.Text= "";
+                    TXTPwdRepReg.Text= "";
+                    return;
+                }
 
-
+                int pwdLen = password.Length;
+                if (pwdLen < Constants.MinPasswordLength || pwdLen > Constants.MaxPasswordLength)
+                {
+                    TABControl.SelectedIndex = 1;
+                    Logger.Error("lunghezza password non valida" + pwdLen);
+                    System.Windows.MessageBox.Show("lunghezza password non valida" + pwdLen);
+                    return;
+                }
             }
             catch (Exception ex)
             {
-                //TODO visualizzare all'utente?
                 System.Windows.MessageBox.Show(ex.Message, "Errore Registrazione", MessageBoxButton.OK, MessageBoxImage.Error);
 
                 StackTrace st = new StackTrace(ex, true);
@@ -630,14 +566,23 @@ namespace Client
 
                 // Ritorno alla schermata di registrazione
                 TABControl.SelectedIndex = 1;
+                return;
             }
-            finally
+            #endregion
+
+
+            if(client.ClientRegistration(username, password, ref this.authToken) == true)
             {
-                // Disconnetto il client in ogni caso visto che dovrà settare la configurazione
-                client.Disconnect();
+                //TODO benvenuto-tutorial
+                TABControl.SelectedIndex = 2;
             }
+            else
+            {
+                TABControl.SelectedIndex = 1;
+                return;
+            }            
         }
-        
+        #endregion
     }
 
 

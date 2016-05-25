@@ -386,24 +386,27 @@ namespace Client
         public static void SendCmdSync(TcpClient cl, Command comando)
         {
 
-            //lenOut   = HEADER_SIZE (command + payload_length_size) + PayloadLength
-            //    la dimensione del Payload sarebbe un long ma la converto ad int perchè tanto nei comandi non avrò mai
-            //    Payload di 2GB              
-            int lenOut = Constants.CommandTypeBytes + Constants.CommandLengthBytes + Convert.ToInt32(comando.PayloadLength);
+            int lenOut = comando.GetTotalLength();
+            byte[] bufferOut = comando.ToBytes();
 
-            //Il buffer in cui vado a preparare i dati
-            byte[] bufferOut = new byte[lenOut];
+            ////lenOut   = HEADER_SIZE (command + payload_length_size) + PayloadLength
+            ////    la dimensione del Payload sarebbe un long ma la converto ad int perchè tanto nei comandi non avrò mai
+            ////    Payload di 2GB              
+            //int lenOut = Constants.CommandTypeBytes + Constants.CommandLengthBytes + Convert.ToInt32(comando.PayloadLength);
 
-            //TODO ma non conviene usare la comando.ToBytes ?
+            ////Il buffer in cui vado a preparare i dati
+            //byte[] bufferOut = new byte[lenOut];
 
-            //Copio nel buffer il codice del comando
-            Buffer.BlockCopy(BitConverter.GetBytes((int)comando.kmd), 0, bufferOut, 0, Constants.CommandTypeBytes);
+            ////TODO ma non conviene usare la comando.ToBytes ?
 
-            //Copio nel buffer la dimensione del Payload
-            Buffer.BlockCopy(BitConverter.GetBytes(comando.PayloadLength), 0, bufferOut, Constants.CommandTypeBytes, Constants.CommandLengthBytes);
+            ////Copio nel buffer il codice del comando
+            //Buffer.BlockCopy(BitConverter.GetBytes((int)comando.kmd), 0, bufferOut, 0, Constants.CommandTypeBytes);
 
-            //Copio nel buffer il Payload
-            Buffer.BlockCopy(Encoding.UTF8.GetBytes(comando.Payload), 0, bufferOut, Constants.CommandTypeBytes + Constants.CommandLengthBytes, Convert.ToInt32(comando.PayloadLength));
+            ////Copio nel buffer la dimensione del Payload
+            //Buffer.BlockCopy(BitConverter.GetBytes(comando.PayloadLength), 0, bufferOut, Constants.CommandTypeBytes, Constants.CommandLengthBytes);
+
+            ////Copio nel buffer il Payload
+            //Buffer.BlockCopy(Encoding.UTF8.GetBytes(comando.Payload), 0, bufferOut, Constants.CommandTypeBytes + Constants.CommandLengthBytes, Convert.ToInt32(comando.PayloadLength));
 
             //Mando il pacchetto
             SafeSocketWrite(cl.Client, bufferOut, lenOut);
@@ -430,15 +433,18 @@ namespace Client
 
                 p_len = BitConverter.ToInt32(buffer, 0);
 
+                // Leggo l'auth token
+                SafeSocketRead(cl.Client, buffer, Constants.AuthTokenLength);
+                ret.AuthToken = Encoding.UTF8.GetString(buffer, 0, Constants.AuthTokenLength);
+
                 // Prendo il Payload
                 byte[] payload = new byte[p_len];
                 SafeSocketRead(cl.Client, payload, p_len);
-
                 ret.Payload = Encoding.UTF8.GetString(payload, 0, p_len);
 
                 return ret;
             }
-            catch (Exception e) //TODO ACCROCCHIO TERIBBILE
+            catch (Exception e)
             {
                 Logger.log("Errore ricezione comando: " + e.Message);
                 return null;

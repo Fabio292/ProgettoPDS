@@ -22,7 +22,7 @@ namespace Client
         /// <summary>
         /// Dimensione totale del header
         /// </summary>
-        public const int HeaderSize = CommandLengthBytes + CommandTypeBytes;
+        public const int HeaderSize = CommandLengthBytes + CommandTypeBytes + AuthTokenLength;
 
         /// <summary>
         /// Percorso di test
@@ -93,6 +93,16 @@ namespace Client
         /// Lunghezza dell'auth token 
         /// </summary>
         public const int AuthTokenLength = 12;
+
+        /// <summary>
+        /// Auth token di default, INVALIDO
+        /// </summary>
+        public const string DefaultAuthToken = "------------";
+
+        /// <summary>
+        /// AuthToken del server, per la mutua autenticazione
+        /// </summary>
+        public const string ServerAuthToken = "AK3Y8TPZE9XT";
     }
 
     /// <summary>
