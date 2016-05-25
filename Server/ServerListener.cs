@@ -560,8 +560,9 @@ namespace Server
 
                 using (SQLiteTransaction tr = connessione.BeginTransaction())
                 {
-                    // Ricevo le modifiche                 
-                    ServerListener.getUpdates(client, connessione, UID);
+                    // Ricevo le modifiche                
+                    int lastVersionID = 0;
+                    ServerListener.getUpdates(client, connessione, UID, ref lastVersionID);
 
                     Logger.Info("File ricevuti");
                     // Ho concluso le modifiche al DB
@@ -579,10 +580,13 @@ namespace Server
                         throw new Exception("Aspettavo un comando di tipo Xml, ricevuto " + lastXmlClient.kmd);
 
                     string xmlPath = Constants.PathServerFile + Constants.PathSeparator + UID + ".xml";
-                    using (StreamWriter sw = new StreamWriter(xmlPath))
-                    {
-                        sw.Write(lastXmlClient.Xml);
-                    }
+                    //using (StreamWriter sw = new StreamWriter(xmlPath))
+                    //{
+                    //    sw.Write(lastXmlClient.Xml);
+                    //}
+
+                    XmlManager aus = new XmlManager(connessione, UID, lastVersionID);
+                    aus.SaveToFile(lastXmlClient.Xml);
                     #endregion
 
                     // Finalizzo la sincronizzazione 
@@ -590,6 +594,8 @@ namespace Server
                     Logger.Info("synch terminata");
                     tr.Commit();
                 }
+
+
             }
         }
 
@@ -597,7 +603,7 @@ namespace Server
         /// <summary>
         /// Riceve i files mancanti dal client passato come parametro
         /// </summary>
-        private static void getUpdates(TcpClient client, SQLiteConnection connection, int UID)
+        private static void getUpdates(TcpClient client, SQLiteConnection connection, int UID, ref int lastVersion)
         {
             int latestVersionId = 0;
             
@@ -783,6 +789,8 @@ namespace Server
                 }
                 throw e;
             }
+
+            lastVersion = latestVersionId;
         }
 
         /// <summary>

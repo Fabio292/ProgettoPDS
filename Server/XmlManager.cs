@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Data.SQLite;
 using System.IO;
 using System.Linq;
 using System.Xml.Linq;
@@ -41,6 +42,98 @@ namespace Server
         {
             this._xmlDoc = new XDocument(CreateFileSystemXmlTree(_dir));
             //SaveToFile(@"C:\Users\Utente\Desktop\out.xml");
+        }
+
+        /// <summary>
+        /// Genero un xml andando a leggere i dati dal DB
+        /// </summary>
+        /// <param name="conn">Connessione al DB</param>
+        /// <param name="UID">ID dell'utente</param>
+        public XmlManager(SQLiteConnection conn, int UID, int versionID)
+        {
+            XElement root = new XElement(XmlManager.DirectoryElementName);
+            root.SetAttributeValue(XmlManager.DirectoryAttributeName, "_");
+
+
+            using (SQLiteCommand sqlCmd = conn.CreateCommand())
+            {
+                sqlCmd.CommandText = @"SELECT PathClient, MD5, LastModTime, Size FROM Versioni WHERE UID = @_UID AND VersionID = @_versionID;";
+                //sqlCmd.Parameters.AddWithValue("@_latestV", latestVersionId);
+                sqlCmd.Parameters.AddWithValue("@_UID", UID);
+                sqlCmd.Parameters.AddWithValue("@_versionID", versionID);
+
+                using (SQLiteDataReader reader = sqlCmd.ExecuteReader())
+                {
+                    string relPath;
+                    string md5;
+                    DateTime lastModTime;
+                    int fileSize;
+
+                    while (reader.Read())
+                    {
+                        // Analizzo ogni elemento ricordando che dal DB tiro fuori SOLO FILE
+                        relPath = reader.GetString(0);
+                        md5 = reader.GetString(1);
+                        lastModTime = reader.GetDateTime(2);
+                        fileSize = reader.GetInt32(3);
+
+                        string fname = Path.GetFileName(relPath);
+                        string[] dirPath = Path.GetDirectoryName(relPath).Split(Constants.PathSeparator.ToCharArray(), StringSplitOptions.RemoveEmptyEntries);
+
+                        //var msg = "";
+                        //foreach (var item in dirPath)
+                        //{
+                        //    msg += item + "    -    ";
+                        //}
+                        //Logger.Info("\n" + relPath + "\n" + fname + "\n" + msg);
+
+                        // Cerco la dir in cui va il file e se non c'e la creo
+                        XElement dir = this.getDirectoryElement(Path.GetDirectoryName(relPath), root);
+                        if (dir == null)
+                        {
+                            #region ricerca e creazione parziale
+                            dir = root;
+                            bool create = false;
+                            foreach (var item in dirPath)
+                            {
+                                if (create == false)
+                                {
+                                    // sto ancora cercando
+                                    var dirAus = this.getDirectoryElement(item, dir);
+                                    if (dirAus != null)
+                                    {
+                                        dir = dirAus;
+                                        continue;
+                                    }
+                                    else
+                                        create = true;
+                                }
+
+                                XElement newDir = new XElement(XmlManager.DirectoryElementName);
+                                newDir.SetAttributeValue(XmlManager.DirectoryAttributeName, item);
+
+                                dir.Add(newDir);
+                                dir = newDir;
+                            }
+                            #endregion
+                        }
+
+                        // A questo punto 'dir' sarà la cartella in cui ci andrà il file
+                        XElement fileElement = new XElement(XmlManager.FileElementName);
+
+                        fileElement.SetAttributeValue(FileAttributeName, fname);
+                        fileElement.SetAttributeValue(FileAttributeLastModTime, lastModTime.ToString(Constants.XmlDateFormat));
+                        fileElement.SetAttributeValue(FileAttributeSize, fileSize.ToString(Constants.XmlDateFormat));
+                        fileElement.SetAttributeValue(FileAttributeChecksum, md5);
+
+                        dir.Add(fileElement);
+
+                    }
+
+                }
+            }
+
+            this._xmlDoc = new XDocument(root);
         }
 
         /// <summary>
@@ -126,17 +219,26 @@ namespace Server
         /// Cerco all'interno del documento xml un elemento di tipo directory </summary>
         /// <param name="relPath">Il percorso RELATIVO alla directory per cui è stato generato il documento della directory da cercare</param>
         /// <returns></returns>
-        private XElement getDirectoryElement(string relPath)
+        private XElement getDirectoryElement(string relPath, XElement src = null)
         {
             // Estraggo gli elementi del percorso per scendere nell'albero dell'xml
             string[] pathElement = relPath.Split(Constants.PathSeparator.ToCharArray(), StringSplitOptions.RemoveEmptyEntries);
 
-            XElement ret = this.GetRoot();
+            XElement ret;
+
+            if(src == null)
+                ret = this.GetRoot();
+            else
+                ret = src;
 
             // prendo il FIRST dell'array ritornato dalla where perchè il filesystem mi garantisce l'univocità dei nomi
             // degli oggetti (directory o file) presenti in una directory
             foreach (string elem in pathElement)
-                ret = ret.Elements(DirectoryElementName).Where(elt => elt.Attribute(DirectoryAttributeName).Value == elem).First();
+            {
+                ret = ret.Elements(DirectoryElementName).Where(elt => elt.Attribute(DirectoryAttributeName).Value == elem).FirstOrDefault();
+                if (ret == null)
+                    break;
+            }
 
             return ret;
         }
@@ -146,10 +248,10 @@ namespace Server
         /// Cerca nel documento corrente l'elemento corrispondente al file il cui percorso è passato come parametro </summary>
         /// <param name="relPath">Percorso RELATIVO alla cartella per cui è stato generato il documento</param>
         /// <returns>L'elemento XML corrispondente</returns>
-        private XElement getFileElement(string relPath)
+        private XElement getFileElement(string relPath, XElement src = null)
         {
             XElement ret = null;
-            XElement dir = this.getDirectoryElement(Path.GetDirectoryName(relPath));
+            XElement dir = this.getDirectoryElement(Path.GetDirectoryName(relPath), src);
 
             ret = dir.Elements(FileElementName).Where(elt => elt.Attribute(FileAttributeName).Value == Path.GetFileName(relPath)).First();
 
