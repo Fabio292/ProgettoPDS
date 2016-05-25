@@ -696,6 +696,7 @@ namespace Server
                     untouchedElement.Remove(info.RelFilePath);
                     elementUpdated.Add(info.RelFilePath);
 
+                    #region Inserimento nuova versione
                     // Aggiorno l'entry nel DB
                     using (SQLiteCommand sqlCmd = connection.CreateCommand())
                     {
@@ -718,7 +719,10 @@ namespace Server
                             throw new Exception("Impossibile aggiungere il nuovo file " + info + " nel DB");
 
                     }
+                    #endregion
 
+                    #region Versione Precedente
+                    // Controllo che esista una versione precedente
                     if (ServerListener.getLastVersionForFile(UID, info.RelFilePath, connection) > 0)
                     {
                         using (SQLiteCommand sqlCmd = connection.CreateCommand())
@@ -738,6 +742,7 @@ namespace Server
 
                         }
                     }
+                    #endregion
 
                     Logger.Info(i + ") Ho ricevuto il file: " + destFileName);
                 }
@@ -841,7 +846,6 @@ namespace Server
         /// <param name="UID">ID dell'utente</param>
         /// <param name="clientRelPath">Percorso del file</param>
         /// <param name="connection">Connessione al db</param>
-        /// <returns></returns>
         private static int getLastVersionForFile(int UID, string clientRelPath, SQLiteConnection connection)
         {
             int ret = -1;

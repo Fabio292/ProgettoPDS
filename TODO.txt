@@ -1,5 +1,3 @@
-Gestire la creazione di cartelle da FSW
-capire come mai non vanno le date su sqlite
 gestire i file cancellati
 gestire il restore
 gestire il download delle modifiche
