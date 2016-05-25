@@ -241,10 +241,12 @@ namespace Client
                 string md5XmlCLient = xmlClient.XMLDigest();
                 string md5XmlServer = getXmlDigest(authToken); // Scarico il digest dal server
 
+                Logger.Debug("CLIENT: " + md5XmlCLient + "\nSERVER: " + md5XmlServer);
+
                 if (String.Compare(md5XmlCLient, md5XmlServer) == 0)
                 {
                     //TODO resetto il timer
-                    Logger.Info("Le due cartelle sono perfettamente uguali, non è necessario nessun aggiornamento");
+                    Logger.Info("Le due cartelle sono perfettamente uguali, non e necessario nessun aggiornamento");
                     this.sendLogout();
                 }
                 else
@@ -258,12 +260,11 @@ namespace Client
                     Logger.Info("l'elenco comandi inviati al server e': \n" + r);
                     Logger.Info("il numero di elementi da inviare al server e': " + elementsNumber);
 
-                    //int n = 0;
-                    //foreach (string filepath in refList)
-                    //{
-                    //    n++;
-                    //    Logger.Info("elemento numero " + n + ": " + filepath);
-                    //}
+                    if(elementsNumber == 0)
+                    {
+                        Logger.Debug("Chiudo perche' non ho file da salvare");
+                        this.sendLogout();
+                    }
 
                     updateDirectory(xmlClient, elementsNumber, refList, authToken);
 

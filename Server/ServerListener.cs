@@ -662,9 +662,13 @@ namespace Server
 
             // Passo alla versione n+1
             latestVersionId++;
-            
+
             // Compongo il percorso base come 'cartella del server dove salvo le robe'\'id client'\
             string basePathAbs = Constants.PathServerFile + Constants.PathSeparator + UID + Constants.PathSeparator;
+
+            // Controllo se la directory esiste, altrimenti la creo
+            if (Directory.Exists(basePathAbs) == false)
+                Directory.CreateDirectory(basePathAbs);
 
             List<String> savedFile = new List<String>(); // Da usare in caso di eccezione per cancellare i file scaricati fino ad ora
             try
@@ -683,7 +687,6 @@ namespace Server
                     string destFilePathAbs = basePathAbs + destFileName;
                     Utilis.GetFile(client, destFilePathAbs, info.FileSize);
                     savedFile.Add(destFilePathAbs);
-
 
                     // Modifico i metadati rendendoli uguali a quelli del client
                     File.SetCreationTime(destFilePathAbs, info.LastModTime);
