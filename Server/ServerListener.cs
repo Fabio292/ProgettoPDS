@@ -600,8 +600,13 @@ namespace Server
         private static void getUpdates(TcpClient client, SQLiteConnection connection, int UID)
         {
             int latestVersionId = 0;
-            List<String> listaElementiUltimaVersioneServer = new List<String>();
             
+            // File non toccati, vanno portati a version+1
+            List<String> untouchedElement = new List<String>();
+
+            // File modificati, vanno lasciati alla versione vecchia e lastVersion->false
+            List<String> elementUpdated = new List<String>();
+
 
             FileNumCommand numeroFilesCmd = new FileNumCommand(Utilis.GetCmdSync(client));
             int numFiles = numeroFilesCmd.NumFiles;
@@ -644,7 +649,7 @@ namespace Server
                         while (reader.Read())
                         {
                             ///popolo la lista dei files dell'ultima versione
-                            listaElementiUltimaVersioneServer.Add(reader.GetString(0));
+                            untouchedElement.Add(reader.GetString(0));
                         }
                     }
                     else
@@ -685,7 +690,8 @@ namespace Server
                     File.SetLastWriteTime(destFilePathAbs, info.LastModTime);
 
                     //rimuovo dalla lista: se l'elemento non è presente nella lista la funzione ritorna false
-                    listaElementiUltimaVersioneServer.Remove(info.RelFilePath);
+                    untouchedElement.Remove(info.RelFilePath);
+                    elementUpdated.Add(info.RelFilePath);
 
                     // Aggiorno l'entry nel DB
                     using (SQLiteCommand sqlCmd = connection.CreateCommand())
@@ -710,22 +716,42 @@ namespace Server
 
                     }
 
+                    if (ServerListener.getLastVersionForFile(UID, info.RelFilePath, connection) > 0)
+                    {
+                        using (SQLiteCommand sqlCmd = connection.CreateCommand())
+                        {
+                            sqlCmd.CommandText = @"UPDATE Versioni 
+                                        SET LastVersion = @_lastVersion  
+                                        WHERE PathClient = @_pathClient AND UID = @_UID AND VersionID = @_prevVersionID";
+
+                            //sqlCmd.Parameters.AddWithValue("@_versionID", latestVersionId);
+                            sqlCmd.Parameters.AddWithValue("@_lastVersion", false);
+                            sqlCmd.Parameters.AddWithValue("@_prevVersionID", latestVersionId - 1);                            
+                            sqlCmd.Parameters.AddWithValue("@_pathClient", info.RelFilePath);
+                            sqlCmd.Parameters.AddWithValue("@_UID", UID);
+
+
+                            int nUpdated = sqlCmd.ExecuteNonQuery();
+
+                        }
+                    }
+
                     Logger.Info(i + ") Ho ricevuto il file: " + destFileName);
                 }
                 #endregion
 
                 #region Aggiorno i DB per i file vecchi
-                foreach (String file in listaElementiUltimaVersioneServer)
+                foreach (String file in untouchedElement)
                 {
                     using (SQLiteCommand sqlCmd = connection.CreateCommand())
                     {
                         sqlCmd.CommandText = @"UPDATE Versioni 
-                                    SET VersionID = @_versionID, LastVersion = @_lastVersion  
+                                    SET VersionID = @_versionID 
                                     WHERE PathClient = @_pathClient AND UID = @_UID AND VersionID = @_prevVersionID";
 
                         sqlCmd.Parameters.AddWithValue("@_versionID", latestVersionId);
                         sqlCmd.Parameters.AddWithValue("@_prevVersionID", latestVersionId-1);
-                        sqlCmd.Parameters.AddWithValue("@_lastVersion", false);
+                        //sqlCmd.Parameters.AddWithValue("@_lastVersion", false);
                         sqlCmd.Parameters.AddWithValue("@_pathClient", file);
                         sqlCmd.Parameters.AddWithValue("@_UID", UID);
 
@@ -735,8 +761,8 @@ namespace Server
                             throw new Exception("Impossibile aggiornare il VersionID del file " + file + " nel DB");
 
                     }
-
                 }
+                
                 #endregion
             }
             catch (Exception e)
@@ -801,6 +827,29 @@ namespace Server
                         }
                     }
                 }
+            }
+
+            return ret;
+        }
+
+        /// <summary>
+        /// Cerco l'ultimo id di versione per un file, altrimenti -1
+        /// </summary>
+        /// <param name="UID">ID dell'utente</param>
+        /// <param name="clientRelPath">Percorso del file</param>
+        /// <param name="connection">Connessione al db</param>
+        /// <returns></returns>
+        private static int getLastVersionForFile(int UID, string clientRelPath, SQLiteConnection connection)
+        {
+            int ret = -1;
+            using (SQLiteCommand sqlCmd = connection.CreateCommand())
+            {
+                sqlCmd.CommandText = @"SELECT MAX(VersionID) FROM Versioni WHERE UID = @_UID AND PathClient = @_pathClient";
+                sqlCmd.Parameters.AddWithValue("@_UID", UID);
+                sqlCmd.Parameters.AddWithValue("@_pathClient", clientRelPath);
+
+                ret = Convert.ToInt32(sqlCmd.ExecuteScalar());
+
             }
 
             return ret;
