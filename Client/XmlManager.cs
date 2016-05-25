@@ -114,10 +114,9 @@ namespace Client
             // Se sono arrivato qua c'era qualcosa di diverso
             fileElement.Attribute(FileAttributeChecksum).Value = fa.Md5;
             fileElement.Attribute(FileAttributeSize).Value = fa.Size.ToString();
-            fileElement.Attribute(FileAttributeLastModTime).Value = fa.LastModtime.ToString(Constants.XmlDateFormat);            
-
+            fileElement.Attribute(FileAttributeLastModTime).Value = fa.LastModtime.ToString(Constants.XmlDateFormat);         
         }
-
+        
         /// <summary>
         /// Cancello una directory dall'albero (e gli eventuali sottoelementi)
         /// </summary>
@@ -152,6 +151,31 @@ namespace Client
             file.SetAttributeValue(FileAttributeChecksum, fa.Md5);
 
             dir.Add(file);
+        }
+
+        /// <summary>
+        /// Vado a leggere una nuova directory
+        /// </summary>
+        /// <param name="absPath">Percorso assoluto della nuova cartella</param>
+        public void CreateDirectory(string absPath)
+        {
+            //Nome della cartella
+            //string dirName = Path.GetDirectoryName(absPath);
+            string dirName = absPath.Split(Constants.PathSeparator.ToCharArray(), StringSplitOptions.RemoveEmptyEntries).Last();
+
+            //Trovo la directory superiore corrispondente
+            string parentDir = Path.GetDirectoryName(Utilis.AbsToRelativePath(absPath));
+            DirectoryInfo dirInfo = new DirectoryInfo(absPath);
+
+            XElement parentDirElem = this.getDirectoryElement(parentDir);
+
+            //creo l'elemento e lo inserisco nel padre
+            XElement dirElem = new XElement(XmlManager.DirectoryElementName);
+            dirElem.SetAttributeValue(XmlManager.DirectoryAttributeName, dirName);
+
+            // Chiamo la funzione ricorsiva usata per generare l'xml
+            parentDirElem.Add(dirElem);
+
         }
 
         #endregion

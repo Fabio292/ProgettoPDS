@@ -265,8 +265,8 @@ namespace Client
                         Logger.Debug("Chiudo perche' non ho file da salvare");
                         this.sendLogout();
                     }
-
-                    updateDirectory(xmlClient, elementsNumber, refList, authToken);
+                    else
+                        updateDirectory(xmlClient, elementsNumber, refList, authToken);
 
                 }
             }

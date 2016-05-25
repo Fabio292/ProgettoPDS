@@ -269,6 +269,7 @@ namespace Client
             {
                 Path = Constants.PathClient,
 
+                //NotifyFilter = NotifyFilters.DirectoryName | NotifyFilters.FileName | NotifyFilters.LastWrite,
                 NotifyFilter = NotifyFilters.DirectoryName | NotifyFilters.FileName | NotifyFilters.LastWrite | NotifyFilters.CreationTime,
                 //NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.FileName | NotifyFilters.DirectoryName | NotifyFilters.CreationTime | NotifyFilters.Attributes,
                 Filter = "*.*",
@@ -305,7 +306,10 @@ namespace Client
         {
             try
             {
-                Logger.Info(e.ChangeType + " " + e.FullPath);
+                //if(e.FullPath.Contains("fileperms.db") == true)
+                //{
+                //    Logger.Debug("bingo");
+                //}
 
                 if (e.ChangeType == WatcherChangeTypes.Changed)
                 {
@@ -313,6 +317,7 @@ namespace Client
                     if (Utilis.IsDirectory(e.FullPath))
                         return;
 
+                    Logger.Info("Changed FILE " + e.FullPath);
                     FileAttributeHelper fileAttr = new FileAttributeHelper(e.FullPath);
                     XMLManager.RefreshFile(fileAttr);
 
@@ -322,9 +327,12 @@ namespace Client
                     if (Utilis.IsDirectory(e.FullPath))
                     {
                         //TODO Creazione nuova cartella
+                        Logger.Info("Created DIR " + e.FullPath);
+                        XMLManager.CreateDirectory(e.FullPath);
                     }
                     else
                     {
+                        Logger.Info("Created FILE " + e.FullPath);
                         FileAttributeHelper fileAttr = new FileAttributeHelper(e.FullPath);
                         XMLManager.CreateFile(fileAttr);
                     }
@@ -333,17 +341,14 @@ namespace Client
                 else if (e.ChangeType == WatcherChangeTypes.Deleted)
                 {
                     // Non posso sapere se è file o directory
+                    Logger.Info("DELETED  " + e.FullPath);
                     XMLManager.DeleteElement(e.FullPath);
                 }
 
 
-                //XMLManager.SaveToFile(Constants.XmlSavePath + @"\x2.xml");                
+                XMLManager.SaveToFile(Constants.XmlSavePath + @"\x2.xml");                
 
             }
-            //catch (FileNotFoundException ex)
-            //{
-            //    Logger.error("OnChanged error: " + ex.Message);
-            //}
             catch (Exception ex)
             {
                 StackTrace st = new StackTrace(ex, true);
