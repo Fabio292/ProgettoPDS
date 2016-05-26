@@ -11,7 +11,6 @@ namespace Server
     class XmlManager
     {
         #region NOMI DEI CAMPI
-        // TODO: mettere per ogni valore il commento ///
         public static readonly string DirectoryElementName = "dir";
         public static readonly string DirectoryAttributeName = "name";
 
@@ -20,7 +19,6 @@ namespace Server
         public static readonly string FileAttributeLastModTime = "modTime";
         public static readonly string FileAttributeSize = "dim";
         public static readonly string FileAttributeChecksum = "md5";
-
         #endregion
 
         private XDocument _xmlDoc;

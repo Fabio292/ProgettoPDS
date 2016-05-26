@@ -9,64 +9,126 @@ using System.Collections.Generic;
 
 namespace Server
 {
-    class ServerListener
+    public sealed class ServerListener
     {
-        private TcpListener serverListener = null;
+        // Singleton
+        private static ServerListener instance = null;
+        private TcpListener tcpListener = null;
+        private bool running = false;
 
-        // TODO fare un singleton
-        public ServerListener()
+        
+        public static ServerListener Instance
         {
-            // TODO spostare nella configurazione
-            Int32 port = 10000;
-            IPAddress localAddr = IPAddress.Parse("127.0.0.1");
+            get
+            {
+                if (instance == null)
+                {
+                    instance = new ServerListener();
+                }
+                return instance;
+            }
+        }
 
-            // TcpListener server = new TcpListener(port);
-            this.serverListener = new TcpListener(IPAddress.Any, port);
+        public bool Running
+        {
+            get
+            {
+                return running;
+            }
+            
+        }
 
-            // TODO gestisco il DB
-            DB.SetDbConn(Constants.ServerDBPath);
-
-            //TODO gestire correttamente PROVA --> creo il DB
-            DB.CheckDB();
-
-            //TODO tutti i InSynch = 0
-
-            // Start listening for client requests.
-            serverListener.Start();
+        private ServerListener()
+        {
+            running = false;
             Logger.Info("Server creato");
-
         }
 
         public void Shutdown()
         {
-            serverListener.Server.Close();
+            if(this.running == true)
+            {
+                tcpListener.Server.Close();
+                this.running = false;
+            }
+            else
+                Logger.Error("Server.shutdown su server spento");
+        }
+
+        /// <summary>
+        /// Setto la porta alla quale ascoltare
+        /// </summary>
+        /// <param name="port">Intero che specifica la porta</param>
+        public bool setPort(int port)
+        {
+            if (running == false)
+            {
+                this.tcpListener = new TcpListener(IPAddress.Any, port);
+                return true;
+            }
+            else
+                return false;
+        }
+
+        /// <summary>
+        /// Setto il file del DB e lo inizializzo ponendo tutti i synch a zero
+        /// </summary>
+        /// <param name="dbPath">Percorso del db, se non esiste viene creato</param>
+        public bool setDB(string dbPath)
+        {
+            if (running == false)
+            {
+                DB.SetDbConn(dbPath);
+                DB.CheckDB();
+
+                // Tolgo tutti gli utenti dalla synch
+                using (SQLiteConnection cnn = new SQLiteConnection(DB.GetConnectionString()))
+                {
+                    cnn.Open();
+                    using (SQLiteCommand mycommand = cnn.CreateCommand())
+                    {
+                        mycommand.CommandText = @"UPDATE Utenti SET InSynch = @_inSynch";
+                        mycommand.Parameters.AddWithValue("@_inSynch", false);
+
+                        mycommand.ExecuteNonQuery();
+                    }
+                }
+
+                return true;
+            }
+            else
+                return false;
         }
 
         public async void ServerStart(CancellationToken ct)
         {
             try
             {
-                Logger.Info("Server in ascolto");
-                while (!ct.IsCancellationRequested)
+                if (this.running == false)
                 {
-                    TcpClient client = await serverListener.AcceptTcpClientAsync().ConfigureAwait(false);
-                    Logger.Info("Ricevuta connessione da " + client.Client.RemoteEndPoint);
-
-                    /* await Task.Factory.StartNew(() =>
+                    running = true;
+                    // Start listening for client requests.
+                    tcpListener.Start();
+                    Logger.Info("Server in ascolto");
+                    while (!ct.IsCancellationRequested)
                     {
-                        this.test();
-                        //this.serve_client(client, ct);
-                    });*/
+                        TcpClient client = await tcpListener.AcceptTcpClientAsync().ConfigureAwait(false);
+                        Logger.Info("Ricevuta connessione da " + client.Client.RemoteEndPoint);
 
-                    // Gestisco il client in un thread separato
-                    Thread thread = new Thread(() => serveClientSync(client, ct));
-                    thread.Start();
+                        // Gestisco il client in un thread separato
+                        Thread thread = new Thread(() => serveClientSync(client, ct));
+                        thread.Start();
 
+                    }
                 }
+                
             }
-            catch (Exception e)
+            catch (Exception ex)
             {
-                Logger.Error("Errore in ServerStart:" + e.ToString());
+                StackTrace st = new StackTrace(ex, true);
+                StackFrame sf = Utilis.GetFirstValidFrame(st);
+
+                Logger.Error("[" + Path.GetFileName(sf.GetFileName()) + "(" + sf.GetFileLineNumber() + ")]: " + ex.Message);
             }
         }
 
@@ -209,8 +271,7 @@ namespace Server
             }
 
         }
-
-
+        
 
         #region Gestione utente
 
@@ -569,22 +630,8 @@ namespace Server
                     // Ho concluso le modifiche al DB
                     ServerListener.sendOk(client);
 
-                    #region Genero XML
-                    // TODO rigenerare l'xml dal DB
-
-                    // Ricevo l'xml dal client
-                    //XmlCommand lastXmlClient = new XmlCommand(Utilis.GetCmdSync(client));
-
-                    //if (lastXmlClient == null)
-                    //    throw new Exception("Aspettavo un comando contenente un Xml, ricevuto nulla");
-                    //if (lastXmlClient.kmd != CmdType.Xml)
-                    //    throw new Exception("Aspettavo un comando di tipo Xml, ricevuto " + lastXmlClient.kmd);
-
+                    #region Genero XML da DB
                     string xmlPath = Constants.PathServerFile + Constants.PathSeparator + UID + ".xml";
-                    //using (StreamWriter sw = new StreamWriter(xmlPath))
-                    //{
-                    //    sw.Write(lastXmlClient.Xml);
-                    //}
 
                     XmlManager aus = new XmlManager(connessione, UID, lastVersionID);
                     aus.SaveToFile(xmlPath);
@@ -627,13 +674,12 @@ namespace Server
                 sqlCmd.Parameters.AddWithValue("@_UID", UID);
                 try
                 {
-                    ///la conversione fa partire un NULLPOINTEREXCEPTION se l'oggetto sqlCmd è null
+                    //la conversione fa partire un NULLPOINTEREXCEPTION se l'oggetto sqlCmd è null
                     latestVersionId = Convert.ToInt32(sqlCmd.ExecuteScalar());
                 }
                 catch (Exception)
-                {
-                    ///TODO basta gestire l'eccezione in questo modo? non credo
-                    //Logger.Error("SERVER->getUpdates La query per trovare l'ID dell'ultima versione non ha dato risultati" + e.ToString());
+                {   
+                    // Prima synch
                     latestVersionId = 0;
                 }
 

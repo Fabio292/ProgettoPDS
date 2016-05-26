@@ -29,7 +29,7 @@ namespace Server
         {
             Exception last = null;
 
-            for (int i = 0; i < 5; i++) // HACK mostruoso
+            for (int i = 0; i < 5; i++)
             {
                 try
                 {
@@ -360,28 +360,8 @@ namespace Server
         /// <param name="comando">comando da inviare</param>
         public static void SendCmdSync(TcpClient cl, Command comando)
         {
-
             int lenOut = comando.GetTotalLength();
             byte[] bufferOut = comando.ToBytes();
-
-            ////lenOut   = HEADER_SIZE (command + payload_length_size) + PayloadLength
-            ////    la dimensione del Payload sarebbe un long ma la converto ad int perchè tanto nei comandi non avrò mai
-            ////    Payload di 2GB              
-            //int lenOut = Constants.CommandTypeBytes + Constants.CommandLengthBytes + Convert.ToInt32(comando.PayloadLength);
-
-            ////Il buffer in cui vado a preparare i dati
-            //byte[] bufferOut = new byte[lenOut];
-
-            ////TODO ma non conviene usare la comando.ToBytes ?
-
-            ////Copio nel buffer il codice del comando
-            //Buffer.BlockCopy(BitConverter.GetBytes((int)comando.kmd), 0, bufferOut, 0, Constants.CommandTypeBytes);
-
-            ////Copio nel buffer la dimensione del Payload
-            //Buffer.BlockCopy(BitConverter.GetBytes(comando.PayloadLength), 0, bufferOut, Constants.CommandTypeBytes, Constants.CommandLengthBytes);
-
-            ////Copio nel buffer il Payload
-            //Buffer.BlockCopy(Encoding.UTF8.GetBytes(comando.Payload), 0, bufferOut, Constants.CommandTypeBytes + Constants.CommandLengthBytes, Convert.ToInt32(comando.PayloadLength));
 
             //Mando il pacchetto
             SafeSocketWrite(cl.Client, bufferOut, lenOut);
