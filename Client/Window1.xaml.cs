@@ -393,16 +393,7 @@ namespace Client
 
 
         #region TAB CHANGE
-        /// <summary>
-        /// La funzione permette di accedere alla scheda contenente lo storico della cartella. 
-        /// E' possibile procedere con il ripristino di una delle versioni precedenti
-        /// </summary>
-        private void BtnStoria_Click(object sender, RoutedEventArgs e)
-        {
-            TABControl.SelectedIndex = 3;
-        }
-
-
+       
         /// <summary>
         /// funzione chiamata al premere del link "Non possiedi un account? Registrati", crea il nuovo account e redirezione su MainWindow
         /// </summary>
@@ -629,6 +620,57 @@ namespace Client
         {
             TABControl.SelectedIndex = 4;
         }
+
+
+        /// <summary>
+        /// La funzione permette di accedere alla scheda contenente lo storico della cartella. 
+        /// E' possibile procedere con il ripristino di una delle versioni precedenti
+        /// </summary>
+        private void BtnStoria_Click(object sender, RoutedEventArgs e)
+        {
+            TABControl.SelectedIndex = 3;
+
+            ///TODO invio la richiesta al server -> XML con i dati della cartella (history)
+            ///TODO il server risponde inviandomi l'XML
+            if (!File.Exists(@"C:\Users\Utente\Desktop\fileXML.xml")) {
+                throw new Exception();
+            }
+            XmlManager temp = new XmlManager(@"C:\Users\Utente\Desktop\fileXML.xml");
+            XElement root = temp.GetRoot();
+            treeViewGeneral.Items.Clear();
+
+            StopTimer();
+
+            treeViewGeneral.Items.Add(xmlToTreeView(root));
+            ((TreeViewItem)treeViewGeneral.Items.GetItemAt(0)).IsExpanded = true;
+            StartTimer();
+        }
+
+
+        private TreeViewItem xmlToTreeView(XElement el)
+        {
+            TreeViewItem ret = new TreeViewItem();
+            // Setto il nome della foglia nell'albero
+            ret.Header = el.Attribute("value").Value;
+
+            // Visualizzo le cartelle ed effettuo la ricorsione
+            foreach (XElement item in el.Elements("elemento"))
+            {
+                ret.Items.Add(item);
+            }
+
+            // Visualizzo i file
+            /*foreach (XElement item in el.Elements(XmlManager.FileElementName))
+            {
+                // Normalizzo la dimensione del file
+                long size = Convert.ToInt64(item.Attribute(XmlManager.FileAttributeSize).Value);
+                string val = item.Attribute(XmlManager.FileAttributeName).Value + " (" + Utilis.NormalizeSize(size) + ")";
+                ret.Items.Add(val);
+            }*/
+
+            return ret;
+        }
+
     }
 
 
