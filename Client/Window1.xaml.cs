@@ -15,6 +15,14 @@ using WinForms = System.Windows.Forms;
 
 namespace Client
 {
+
+    public class VersionInfo
+    {
+        public string Md5;
+        public DateTime LastModTime;
+        public long FileSize;
+    }
+
     /// <summary>
     /// Logica di interazione per Window1.xaml
     /// </summary>
@@ -23,12 +31,16 @@ namespace Client
         private ClientConnection client;
         private CancellationTokenSource cts = new CancellationTokenSource();
         private FileSystemWatcher Watcher;
-        private XmlManager XMLManager;
+        private XmlManager XMLInstance;
         private System.Windows.Forms.NotifyIcon MyNotifyIcon;
         private Dictionary<string, FileAttributeHelper> fileEditedMap = new Dictionary<string, FileAttributeHelper>();
         private System.Windows.Forms.ContextMenu menu_tray;
 
+        private Dictionary<string, List<VersionInfo>> remoteVersionMap = new Dictionary<string, List<VersionInfo>>();
+        
         static System.Timers.Timer TreeViewRefreshTimer;
+
+        //private Dictionary<string, >
 
         //private string savedUsername = "";
         //private string savedPwd = "";
@@ -75,8 +87,8 @@ namespace Client
 
             // genero l'xml
             // TODO fare in un thread a parte?
-            XMLManager = new XmlManager(new DirectoryInfo(Constants.PathClient));
-            XMLManager.SaveToFile(Constants.XmlSavePath + @"\x.xml");
+            XMLInstance = new XmlManager(new DirectoryInfo(Constants.PathClient));
+            XMLInstance.SaveToFile(Constants.XmlSavePath + @"\x.xml");
             printXmlToTreeView();
 
             // Avvio timer e watcher
@@ -158,8 +170,8 @@ namespace Client
 
         private void BtnStartSynch_Click(object sender, RoutedEventArgs e)
         {
-            XMLManager.SaveToFile(Constants.XmlSavePath + @"\x.xml");
-            client.ClientSync(XMLManager, authToken);
+            XMLInstance.SaveToFile(Constants.XmlSavePath + @"\x.xml");
+            client.ClientSync(XMLInstance, authToken);
         }
 
 
@@ -189,7 +201,7 @@ namespace Client
         private void TreeViewRefreshTimerTick(object sender, ElapsedEventArgs e)
         {
             //TODO rimuovere!!!
-            //XMLManager = new XmlManager(new DirectoryInfo(Constants.PathClient));
+            //XMLInstance = new XmlManager(new DirectoryInfo(Constants.PathClient));
             Logger.log("test timer");
             //-----------------            
 
@@ -224,7 +236,7 @@ namespace Client
         #region XML TO TREEVIEW
         private void printXmlToTreeView()
         {
-            XElement root = XMLManager.GetRoot();
+            XElement root = XMLInstance.GetRoot();
             TRWFolder.Items.Clear();
 
             StopTimer();
@@ -320,7 +332,7 @@ namespace Client
 
                     Logger.Info("Changed FILE " + e.FullPath);
                     FileAttributeHelper fileAttr = new FileAttributeHelper(e.FullPath);
-                    XMLManager.RefreshFile(fileAttr);
+                    XMLInstance.RefreshFile(fileAttr);
 
                 }
                 else if (e.ChangeType == WatcherChangeTypes.Created)
@@ -329,13 +341,13 @@ namespace Client
                     {
                         //TODO Creazione nuova cartella
                         Logger.Info("Created DIR " + e.FullPath);
-                        XMLManager.CreateDirectory(e.FullPath);
+                        XMLInstance.CreateDirectory(e.FullPath);
                     }
                     else
                     {
                         Logger.Info("Created FILE " + e.FullPath);
                         FileAttributeHelper fileAttr = new FileAttributeHelper(e.FullPath);
-                        XMLManager.CreateFile(fileAttr);
+                        XMLInstance.CreateFile(fileAttr);
                     }
                     
                 }
@@ -343,11 +355,11 @@ namespace Client
                 {
                     // Non posso sapere se è file o directory
                     Logger.Info("DELETED  " + e.FullPath);
-                    XMLManager.DeleteElement(e.FullPath);
+                    XMLInstance.DeleteElement(e.FullPath);
                 }
 
 
-                XMLManager.SaveToFile(Constants.XmlSavePath + @"\x2.xml");                
+                XMLInstance.SaveToFile(Constants.XmlSavePath + @"\x2.xml");                
 
             }
             catch (Exception ex)
@@ -370,14 +382,14 @@ namespace Client
 
                 if (Utilis.IsDirectory(e.FullPath))
                 {   // Directory
-                    XMLManager.RenameDirectory(e.OldName, e.Name);
+                    XMLInstance.RenameDirectory(e.OldName, e.Name);
                 }
                 else
                 {   // File
-                    XMLManager.RenameFile(e.OldName, e.Name);
+                    XMLInstance.RenameFile(e.OldName, e.Name);
                 }
 
-                //XMLManager.SaveToFile(Constants.XmlSavePath + @"\x2.xml");
+                //XMLInstance.SaveToFile(Constants.XmlSavePath + @"\x2.xml");
                 
 
             }
@@ -490,7 +502,7 @@ namespace Client
 
             try
             {
-                client.ClientSync(XMLManager, this.authToken);
+                client.ClientSync(XMLInstance, this.authToken);
             }
             catch (Exception ex)
             {
@@ -621,7 +633,7 @@ namespace Client
             TABControl.SelectedIndex = 4;
         }
 
-
+        #region RESTORE
         /// <summary>
         /// La funzione permette di accedere alla scheda contenente lo storico della cartella. 
         /// E' possibile procedere con il ripristino di una delle versioni precedenti
@@ -630,47 +642,81 @@ namespace Client
         {
             TABControl.SelectedIndex = 3;
 
+            // TODO faccio una Client.synch
             ///TODO invio la richiesta al server -> XML con i dati della cartella (history)
             ///TODO il server risponde inviandomi l'XML
-            if (!File.Exists(@"C:\Users\Utente\Desktop\fileXML.xml")) {
+            if (!File.Exists(@"D:\PDSCartellaPDS\fileXML.xml")) {
                 throw new Exception();
             }
-            XmlManager temp = new XmlManager(@"C:\Users\Utente\Desktop\fileXML.xml");
+            XmlManager temp = new XmlManager(@"D:\PDSCartellaPDS\fileXML.xml");
             XElement root = temp.GetRoot();
-            treeViewGeneral.Items.Clear();
+            TRWRestore.Items.Clear();
+            remoteVersionMap.Clear();
+            
+            TreeViewItem trwRoot = xmlToTreeViewRestore(root, "");
+            trwRoot.Header = "cartella root"; // TODO mettere il nome della cartella di synch del client
 
-            StopTimer();
+            TRWRestore.Items.Add(trwRoot);
+            ((TreeViewItem)TRWRestore.Items.GetItemAt(0)).IsExpanded = true;
 
-            treeViewGeneral.Items.Add(xmlToTreeView(root));
-            ((TreeViewItem)treeViewGeneral.Items.GetItemAt(0)).IsExpanded = true;
-            StartTimer();
         }
 
 
-        private TreeViewItem xmlToTreeView(XElement el)
+        private TreeViewItem xmlToTreeViewRestore(XElement el, string path)
         {
             TreeViewItem ret = new TreeViewItem();
+
+            path += el.Attribute(XmlManager.DirectoryAttributeName).Value + Constants.PathSeparator;
+
             // Setto il nome della foglia nell'albero
-            ret.Header = el.Attribute("value").Value;
+            ret.Header = el.Attribute(XmlManager.DirectoryAttributeName).Value;
 
             // Visualizzo le cartelle ed effettuo la ricorsione
-            foreach (XElement item in el.Elements("elemento"))
+            foreach (XElement item in el.Elements(XmlManager.DirectoryElementName))
             {
-                ret.Items.Add(item);
+                ret.Items.Add(xmlToTreeViewRestore(item, path));
             }
 
             // Visualizzo i file
-            /*foreach (XElement item in el.Elements(XmlManager.FileElementName))
+            foreach (XElement fileElement in el.Elements(XmlManager.FileElementName))
             {
-                // Normalizzo la dimensione del file
-                long size = Convert.ToInt64(item.Attribute(XmlManager.FileAttributeSize).Value);
-                string val = item.Attribute(XmlManager.FileAttributeName).Value + " (" + Utilis.NormalizeSize(size) + ")";
-                ret.Items.Add(val);
-            }*/
+                // Creo la lista da inserire nella mappa
+                List<VersionInfo> versionList = new List<VersionInfo>();
+
+                // Percorso del file
+                string fileName = fileElement.Attribute(XmlManager.FileAttributeName).Value;
+                string filePath = path + fileName;
+
+                // Ciclo sulle varie versioni
+                foreach (XElement version in fileElement.Elements("version")) // TODO spostare nelle costanti del xml
+                {
+                    VersionInfo v = new VersionInfo();  
+
+                    // Setto i parametri per la versione
+                    v.LastModTime = DateTime.Parse(version.Attribute(XmlManager.FileAttributeLastModTime).Value);
+                    v.FileSize = Convert.ToInt64(version.Attribute(XmlManager.FileAttributeSize).Value);
+                    v.Md5 = version.Attribute(XmlManager.FileAttributeChecksum).Value;
+
+                    // Aggiungo alla lista 
+                    versionList.Add(v);
+                }
+
+                // Aggiungo alla mappa
+                remoteVersionMap.Add(filePath, versionList);
+
+                ret.Items.Add(fileName);
+            }
 
             return ret;
         }
 
+        #endregion
+
+        private void TRWGeneral_SelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
+        {
+            string selectedItem = TRWRestore.SelectedItem.ToString();
+            Logger.Info("SELEZIOUTNATO: " + TRWRestore.SelectedItem.ToString() );
+        }
     }
 
 
