@@ -51,9 +51,9 @@ namespace Server
 
             server.ServerStart(cts.Token);
 
-            BTNStartServer.Content = "Server in ascolto...";
+            //BTNStartServer.Content = "Server in ascolto...";
             lblStatusLeft.Text = "Server in ascolto";
-            BTNStartServer.IsEnabled = false;
+            //BTNStartServer.IsEnabled = false;
         }
 
         private void ServerClosing(object sender, System.ComponentModel.CancelEventArgs e)

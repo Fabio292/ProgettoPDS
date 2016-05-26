@@ -632,18 +632,44 @@ namespace Client
 
             ///TODO invio la richiesta al server -> XML con i dati della cartella (history)
             ///TODO il server risponde inviandomi l'XML
-            String fileXMLpath = @"C:\Users\Utente\Desktop\fileXML.xml";
-            XMLManager = new XmlManager(fileXMLpath);
-            XElement root = XMLManager.GetRoot();
+            if (!File.Exists(@"C:\Users\Utente\Desktop\fileXML.xml")) {
+                throw new Exception();
+            }
+            XmlManager temp = new XmlManager(@"C:\Users\Utente\Desktop\fileXML.xml");
+            XElement root = temp.GetRoot();
             treeViewGeneral.Items.Clear();
 
             StopTimer();
 
-            treeViewGeneral.Items.Add(xmlToTreeViewDirectory(root));
+            treeViewGeneral.Items.Add(xmlToTreeView(root));
             ((TreeViewItem)treeViewGeneral.Items.GetItemAt(0)).IsExpanded = true;
             StartTimer();
         }
 
+
+        private TreeViewItem xmlToTreeView(XElement el)
+        {
+            TreeViewItem ret = new TreeViewItem();
+            // Setto il nome della foglia nell'albero
+            ret.Header = el.Attribute("value").Value;
+
+            // Visualizzo le cartelle ed effettuo la ricorsione
+            foreach (XElement item in el.Elements("elemento"))
+            {
+                ret.Items.Add(item);
+            }
+
+            // Visualizzo i file
+            /*foreach (XElement item in el.Elements(XmlManager.FileElementName))
+            {
+                // Normalizzo la dimensione del file
+                long size = Convert.ToInt64(item.Attribute(XmlManager.FileAttributeSize).Value);
+                string val = item.Attribute(XmlManager.FileAttributeName).Value + " (" + Utilis.NormalizeSize(size) + ")";
+                ret.Items.Add(val);
+            }*/
+
+            return ret;
+        }
 
     }
 
