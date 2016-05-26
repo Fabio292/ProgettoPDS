@@ -130,16 +130,6 @@ namespace Server
             DataTable dt = new DataTable();
             try
             {
-                //SQLiteConnection cnn = new SQLiteConnection(dbConnectionString);
-                //cnn.Open();
-                //SQLiteCommand mycommand = new SQLiteCommand(cnn);
-                //mycommand.CommandText = sql;
-                //SQLiteDataReader reader = mycommand.ExecuteReader();
-                //dt.Load(reader);
-                //reader.Close();
-                //cnn.Close();
-
-
                 using (SQLiteConnection cnn = new SQLiteConnection(DB.GetConnectionString()))
                 {
                     cnn.Open();
