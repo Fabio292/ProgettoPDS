@@ -717,6 +717,7 @@ namespace Client
             string selectedItem = TRWRestore.SelectedItem.ToString();
             Logger.Info("SELEZIOUTNATO: " + TRWRestore.SelectedItem.ToString() );
         }
+
     }
 
 
