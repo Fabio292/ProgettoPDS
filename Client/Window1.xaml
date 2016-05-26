@@ -115,7 +115,8 @@
                         <ColumnDefinition Width="383*"/>
                     </Grid.ColumnDefinitions>
                     <Button x:Name="backButton" Content="Ritorna al main" HorizontalAlignment="Center" FontWeight="Bold" Background="AliceBlue" VerticalAlignment="Top" MaxHeight="30" MinHeight="30" MaxWidth="140" MinWidth="140" Click="BackToMainButton" Margin="241,321,10,0" Grid.Column="1" Height="0" Width="119"/>
-                    <ListBox x:Name="listBox" Grid.ColumnSpan="2" HorizontalAlignment="Left" Height="296" Margin="10,10,0,0" VerticalAlignment="Top" Width="466"/>
+                    <TreeView x:Name="treeViewGeneral" Grid.Column="1" HorizontalAlignment="Left" Height="296" Margin="90,10,0,0" VerticalAlignment="Top" Width="170"/>
+                    <TreeView x:Name="treeViewSpecific" HorizontalAlignment="Left" Height="296" Margin="10,10,0,0" VerticalAlignment="Top" Width="170" Grid.ColumnSpan="2"/>
                 </Grid>
             </TabItem>
 

@@ -393,16 +393,7 @@ namespace Client
 
 
         #region TAB CHANGE
-        /// <summary>
-        /// La funzione permette di accedere alla scheda contenente lo storico della cartella. 
-        /// E' possibile procedere con il ripristino di una delle versioni precedenti
-        /// </summary>
-        private void BtnStoria_Click(object sender, RoutedEventArgs e)
-        {
-            TABControl.SelectedIndex = 3;
-        }
-
-
+       
         /// <summary>
         /// funzione chiamata al premere del link "Non possiedi un account? Registrati", crea il nuovo account e redirezione su MainWindow
         /// </summary>
@@ -629,6 +620,31 @@ namespace Client
         {
             TABControl.SelectedIndex = 4;
         }
+
+
+        /// <summary>
+        /// La funzione permette di accedere alla scheda contenente lo storico della cartella. 
+        /// E' possibile procedere con il ripristino di una delle versioni precedenti
+        /// </summary>
+        private void BtnStoria_Click(object sender, RoutedEventArgs e)
+        {
+            TABControl.SelectedIndex = 3;
+
+            ///TODO invio la richiesta al server -> XML con i dati della cartella (history)
+            ///TODO il server risponde inviandomi l'XML
+            String fileXMLpath = @"C:\Users\Utente\Desktop\fileXML.xml";
+            XMLManager = new XmlManager(fileXMLpath);
+            XElement root = XMLManager.GetRoot();
+            treeViewGeneral.Items.Clear();
+
+            StopTimer();
+
+            treeViewGeneral.Items.Add(xmlToTreeViewDirectory(root));
+            ((TreeViewItem)treeViewGeneral.Items.GetItemAt(0)).IsExpanded = true;
+            StartTimer();
+        }
+
+
     }
 
 
