@@ -9,6 +9,7 @@ using System.Windows.Controls;
 using System.Windows.Forms;
 using System.Xml.Linq;
 using System.Diagnostics;
+using WinForms = System.Windows.Forms;
 
 
 
@@ -590,6 +591,44 @@ namespace Client
             }            
         }
         #endregion
+
+        private void SaveSettings(object sender, RoutedEventArgs e)
+        {
+            //TODO togliere il path dalle constants e MEMORIZZARLO CON XML
+            if (string.IsNullOrWhiteSpace(TXTpathCartella.Text)){
+                System.Windows.MessageBox.Show("Inserisci il percorso della cartella da sincronizzare");
+                return;
+            }
+            else{
+                Properties.Settings.Default.Path = TXTpathCartella.Text;
+            }
+
+            //TODO togliere il timer dalle constants e MEMORIZZARLO CON XML
+            if (string.IsNullOrWhiteSpace(TXTpathCartella.Text))
+            {
+                System.Windows.MessageBox.Show("Inserisci il valore del timer");
+                return;
+            }
+            else {
+                Properties.Settings.Default.timer = Convert.ToInt32(timerValue.Value);
+            }
+
+        }
+
+
+        private void BrowseDirectory(object sender, RoutedEventArgs e)
+        {
+            var dialog = new WinForms.FolderBrowserDialog();
+            WinForms.DialogResult result = dialog.ShowDialog();
+            TXTpathCartella.Text = dialog.SelectedPath;
+            Properties.Settings.Default.Path = dialog.SelectedPath;
+        }
+
+
+        private void BtnSettings_Click(object sender, RoutedEventArgs e)
+        {
+            TABControl.SelectedIndex = 4;
+        }
     }
 
 
