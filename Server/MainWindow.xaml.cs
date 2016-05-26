@@ -1,4 +1,7 @@
-﻿using System.Threading;
+﻿using System;
+using System.Diagnostics;
+using System.IO;
+using System.Threading;
 using System.Windows;
 
 
@@ -23,37 +26,69 @@ namespace Server
             Logger.log("");
             
             server = ServerListener.Instance;
-            
+            lblStatusLeft.Text = "Server offline";
+
+            TxtDbPath.Text = Settings.DbPath;
+            TxtPort.Text = Settings.Port.ToString();
+
         }
 
         private void StartListening(object sender, RoutedEventArgs e)
         {
-            //if (server.Running == true)
-            //{
-            //    cts.Cancel();
-            //    server.Shutdown();
-            //    BTNStartServer.Content = "Avvia server";
-            //    lblStatusLeft.Text = "Server NON in ascolto";
-            //}
-            //else
-            //{
-            //    //Inizializzo i parametri
-            //    server.setPort(10000);
-            //    server.setDB(Constants.ServerDBPath);
-            //    server.ServerStart(cts.Token);
-            //    BTNStartServer.Content = "Interrompi server";
-            //    lblStatusLeft.Text = "Server in ascolto";
-            //}
+            #region validazione input
+            string dbPath = TxtDbPath.Text;
+            if(Utilis.IsValidPath(dbPath) == false) // Controllo solo se è sintatticamente correto. se non esiste lo creo dopo
+            {
+                Logger.Info("Inserito dbPath errato: " + dbPath);
+                MessageBox.Show("Attenzione, il percorso del file del DB è errato", "Errore percorso DB", MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
+            Settings.DbPath = dbPath;
 
-            //Inizializzo i parametri
-            server.setPort(10000);
-            server.setDB(Constants.ServerDBPath);
+            try
+            {
+                int port = Convert.ToInt32(TxtPort.Text);
+                Settings.Port = port;
+            }
+            catch (Exception)
+            {
+                Logger.Error("Inserita porta errata: " + TxtPort.Text);
+                MessageBox.Show("Attenzione, il numero di porta è errato", "Errore porta", MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
+            #endregion
 
-            server.ServerStart(cts.Token);
+            try
+            {
+                // Inizializzo i parametri
+                server.setPort(Settings.Port);
+                server.setDB(Settings.DbPath);
 
-            BTNStartServer.Content = "Server in ascolto...";
-            lblStatusLeft.Text = "Server in ascolto";
-            BTNStartServer.IsEnabled = false;
+                // Avvio il listener
+                server.ServerStart(cts.Token);
+
+                #region Modifiche alla window
+                BTNStartServer.Content = "Server in ascolto";
+                lblStatusLeft.Text = "Server in ascolto su porta " + Settings.Port;
+
+                BTNStartServer.IsEnabled = false;
+                TxtPort.IsEnabled = false;
+                TxtDbPath.IsEnabled = false;
+                BtnChooseDbPath.IsEnabled = false;
+                #endregion
+
+                // Se arrivo a questo punto le impostazioni sono valide e le posso salvare
+                Settings.SaveSettings();
+            }
+            catch (Exception ex)
+            {
+                StackTrace st = new StackTrace(ex, true);
+                StackFrame sf = Utilis.GetFirstValidFrame(st);
+
+                Logger.Error("[" + Path.GetFileName(sf.GetFileName()) + "(" + sf.GetFileLineNumber() + ")]: " + ex.Message);
+                MessageBox.Show("Impossibile aprire il server\n"+ex.Message, "Errore apertura server", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+
         }
 
         private void ServerClosing(object sender, System.ComponentModel.CancelEventArgs e)
@@ -69,6 +104,31 @@ namespace Server
             Logger.log("--------------------------------------");
             Logger.log("");
         }
-        
+
+        private void BtnChooseDbPath_Click(object sender, RoutedEventArgs e)
+        {
+            //// Create OpenFileDialog 
+            //Microsoft.Win32.OpenFileDialog dlg = new Microsoft.Win32.OpenFileDialog();
+
+            //// Set filter for file extension and default file extension 
+            ////dlg.DefaultExt = ".png";
+            ////dlg.Filter = "JPEG Files (*.jpeg)|*.jpeg|PNG Files (*.png)|*.png|JPG Files (*.jpg)|*.jpg|GIF Files (*.gif)|*.gif";
+
+
+            //// Display OpenFileDialog by calling ShowDialog method 
+            //Nullable<bool> result = dlg.ShowDialog();
+
+
+            //// Get the selected file name and display in a TextBox 
+            //if (result == true)
+            //{
+
+            //}
+
+            //var dialog = new System.Windows.Forms.FolderBrowserDialog();
+            //System.Windows.Forms;.DialogResult result = dialog.ShowDialog();
+            //TxtDbPath.Text = dialog.SelectedPath;
+            //Properties.Settings.Default.Path = dialog.SelectedPath;
+        }
     }
 }

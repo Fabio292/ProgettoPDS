@@ -1,11 +1,12 @@
 ﻿using System;
+using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Net.Sockets;
 using System.Security.Cryptography;
 using System.Text;
-using System.Diagnostics;
+using System.Text.RegularExpressions;
 using System.Threading;
-using System.Linq;
 
 namespace Server
 {
@@ -137,6 +138,21 @@ namespace Server
                 return true;
             else
                 return false;
+        }
+
+
+        /// <summary>
+        /// Controllo se il percorso passato è sintatticamente corretto
+        /// </summary>
+        /// <param name="path">Percorso da controllare</param>
+        public static bool IsValidPath(string path)
+        {
+            Regex containsABadCharacter = new Regex("["
+                  + Regex.Escape(new string(System.IO.Path.GetInvalidPathChars())) + "]");
+            if (containsABadCharacter.IsMatch(path))
+            { return false; };
+            
+            return true;
         }
 
         /// <summary>

@@ -18,31 +18,22 @@
                 <ItemsPanelTemplate>
                     <Grid Name="StatusBarGrid">
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="0.2*" />
-                            <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="0.6*" />
-                            <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="0.2*" />
+                            <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
                     </Grid>
                 </ItemsPanelTemplate>
             </StatusBar.ItemsPanel>
 
             <StatusBarItem Grid.Column="0">
-                <TextBlock Name="lblStatusLeft" Text="TESTO"  />
+                <TextBlock Name="lblStatusLeft" Text="Stato server"  />
             </StatusBarItem>
             
-            <Separator Grid.Column="1" />
+            <Separator Grid.Column="1" Visibility="Hidden"/>
             
             <StatusBarItem Grid.Column="2">
-                <TextBlock Name="lblStatusCenter"  Text="Stato dell'applicazione" />
+                <TextBlock Name="lblStatusCenter"  Text="Operazione corrente: " Visibility="Hidden"/>
             </StatusBarItem>
             
-            <Separator Grid.Column="3" />
-            
-            <StatusBarItem Grid.Column="4" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch">
-                <TextBlock Name="lblStatusRight" Text="TESTO  " TextAlignment="Right"/>
-            </StatusBarItem>
         </StatusBar>
 
         <Grid DockPanel.Dock="Top">
@@ -89,7 +80,7 @@
                         </Grid.RowDefinitions>
                         
                         <TextBox x:Name="TxtDbPath" Grid.Column="0" Text="" TextAlignment="Left" VerticalContentAlignment="Center" VerticalAlignment="Center" Height="20"/>
-                        <Button x:Name="BtnChooseDbPath" Grid.Column="1" Content="..." FontWeight="Bold" MinHeight="20" MaxWidth="80" VerticalAlignment="Center"  Margin="10,0,0,0"/>
+                        <Button x:Name="BtnChooseDbPath" Grid.Column="1" Content="..." FontWeight="Bold" MinHeight="20" MaxWidth="80" VerticalAlignment="Center"  Margin="10,0,0,0" Click="BtnChooseDbPath_Click"/>
                     </Grid>
 
                     <Label x:Name="LblPort" Content="Porta" Grid.Column="1" Grid.Row="2" Height="15" Padding="0"
