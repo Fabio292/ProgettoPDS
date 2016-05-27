@@ -6,6 +6,7 @@ using System.Text;
 using System.Diagnostics;
 using System.Threading;
 using System.Linq;
+using System.Text.RegularExpressions;
 
 namespace Client
 {
@@ -143,7 +144,7 @@ namespace Client
         /// Estraggo il percorso relativo da un percorso assoluto</summary>
         /// <param name="abs">Il percorso assoluto (es: C:\blabla\a.txt)</param>
         /// <returns>Percorso relativo, senza '\' iniziale</returns>
-        public static string AbsToRelativePath(string abs, string root = Constants.PathClient)
+        public static string AbsToRelativePath(string abs, string root)
         {
             return abs.Replace(root, "").Substring(1);
         }
@@ -152,13 +153,27 @@ namespace Client
         /// Costruisco un percorso assoluto partendo da uno relativo </summary>
         /// <param name="relative">Percorso relativo, (es dati\report.txt)'</param>
         /// <returns>Il percorso assoluto (es: C:\blabla\a.txt)</returns>
-        public static string RelativeToAbsPath(string relative, string root = Constants.PathClient)
+        public static string RelativeToAbsPath(string relative, string root)
         {
 
             if (relative.StartsWith(Path.DirectorySeparatorChar.ToString()) == true)
                 return root + relative;
             else
                 return root + Path.DirectorySeparatorChar + relative;
+        }
+
+        /// <summary>
+        /// Controllo se il percorso passato è sintatticamente corretto
+        /// </summary>
+        /// <param name="path">Percorso da controllare</param>
+        public static bool IsValidPath(string path)
+        {
+            Regex containsABadCharacter = new Regex("["
+                  + Regex.Escape(new string(System.IO.Path.GetInvalidPathChars())) + "]");
+            if (containsABadCharacter.IsMatch(path))
+            { return false; };
+
+            return true;
         }
 
         #endregion

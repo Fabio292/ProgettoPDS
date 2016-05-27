@@ -372,7 +372,7 @@ namespace Client
         {
             get
             {
-                return Utilis.RelativeToAbsPath(_relFilePath);
+                return Utilis.RelativeToAbsPath(_relFilePath, Settings.SynchPath);
             }
 
             private set { }
@@ -411,7 +411,7 @@ namespace Client
         /// <exception cref="ArgumentException">Eccezione lanciata quando il percorso del file non è valido</exception>
         public FileInfoCommand(string relPath, string authToken) : base()
         {
-            string absPath = Utilis.RelativeToAbsPath(relPath);
+            string absPath = Utilis.RelativeToAbsPath(relPath, Settings.SynchPath);
 
             // Controllo se il file esiste e se è veramente un file
             if (!File.Exists(absPath))

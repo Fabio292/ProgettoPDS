@@ -27,12 +27,7 @@ namespace Client
         /// <summary>
         /// Percorso di test
         /// </summary>
-        public const string PathClient = @"D:\PDSCartellaPDS\ClientSide";
-
-        /// <summary>
-        /// Percorso di test
-        /// </summary>
-        public const string PathServerFile = @"D:\PDSCartellaPDS\ServerBackup";
+        //public const string PathClient = @"D:\PDSCartellaPDS\ClientSide";
        
         /// <summary>
         /// Percorso dove salvare il file xml

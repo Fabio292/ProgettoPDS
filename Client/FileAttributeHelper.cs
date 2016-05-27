@@ -42,7 +42,7 @@ namespace Client
             if (File.Exists(absFilePath))
             {
                 this.AbsFilePath = absFilePath;
-                this.RelFilePath = Utilis.AbsToRelativePath(absFilePath);
+                this.RelFilePath = Utilis.AbsToRelativePath(absFilePath, Settings.SynchPath);
 
                 this.LastModtime = File.GetLastWriteTime(absFilePath);
 

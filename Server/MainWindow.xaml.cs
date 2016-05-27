@@ -107,28 +107,26 @@ namespace Server
 
         private void BtnChooseDbPath_Click(object sender, RoutedEventArgs e)
         {
-            //// Create OpenFileDialog 
-            //Microsoft.Win32.OpenFileDialog dlg = new Microsoft.Win32.OpenFileDialog();
+            // Create OpenFileDialog 
+            Microsoft.Win32.OpenFileDialog dlg = new Microsoft.Win32.OpenFileDialog();
+            
 
-            //// Set filter for file extension and default file extension 
-            ////dlg.DefaultExt = ".png";
-            ////dlg.Filter = "JPEG Files (*.jpeg)|*.jpeg|PNG Files (*.png)|*.png|JPG Files (*.jpg)|*.jpg|GIF Files (*.gif)|*.gif";
-
-
-            //// Display OpenFileDialog by calling ShowDialog method 
-            //Nullable<bool> result = dlg.ShowDialog();
+            // Set filter for file extension and default file extension 
+            dlg.DefaultExt = ".sqlite";
+            dlg.Filter = "Sqlite DB|*.sqlite;*.db;*.db3;*.sqlite3|All files (*.*)|*.*";
 
 
-            //// Get the selected file name and display in a TextBox 
-            //if (result == true)
-            //{
+            // Display OpenFileDialog by calling ShowDialog method 
+            Nullable<bool> result = dlg.ShowDialog();
 
-            //}
 
-            //var dialog = new System.Windows.Forms.FolderBrowserDialog();
-            //System.Windows.Forms;.DialogResult result = dialog.ShowDialog();
-            //TxtDbPath.Text = dialog.SelectedPath;
-            //Properties.Settings.Default.Path = dialog.SelectedPath;
+            // Get the selected file name and display in a TextBox 
+            if (result == true)
+            {
+                // Open document 
+                string filename = dlg.FileName;
+                TxtDbPath.Text = filename;
+            }
         }
     }
 }

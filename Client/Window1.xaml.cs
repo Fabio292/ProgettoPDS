@@ -37,13 +37,10 @@ namespace Client
         private System.Windows.Forms.ContextMenu menu_tray;
 
         private Dictionary<string, List<VersionInfo>> remoteVersionMap = new Dictionary<string, List<VersionInfo>>();
-        
+               
+
         static System.Timers.Timer TreeViewRefreshTimer;
-
-        //private Dictionary<string, >
-
-        //private string savedUsername = "";
-        //private string savedPwd = "";
+        
         private string authToken = Constants.DefaultAuthToken;
 
         #region COSTRUTTORE - USCITA
@@ -67,10 +64,13 @@ namespace Client
 
             MyNotifyIcon.Visible = true;
 
-            foreach (TabItem item in TABControl.Items)
-            {
-                item.Visibility = Visibility.Collapsed;
-            }
+            //foreach (TabItem item in TABControl.Items)
+            //{
+            //    item.Visibility = Visibility.Collapsed;
+            //}
+
+            //((TabItem)TABControl.Items.GetItemAt(0)).Visibility = Visibility.Collapsed;
+            //((TabItem)TABControl.Items.GetItemAt(1)).Visibility = Visibility.Collapsed;
         }
 
         private void Window_Loaded(object sender, RoutedEventArgs e)
@@ -87,7 +87,7 @@ namespace Client
 
             // genero l'xml
             // TODO fare in un thread a parte?
-            XMLInstance = new XmlManager(new DirectoryInfo(Constants.PathClient));
+            XMLInstance = new XmlManager(new DirectoryInfo(Settings.SynchPath));
             XMLInstance.SaveToFile(Constants.XmlSavePath + @"\x.xml");
             printXmlToTreeView();
 
@@ -95,7 +95,7 @@ namespace Client
             StartWatcher();
             StopTimer();//StartTimer();
 
-            //TODO vado a leggere le credenziali dal file, se esiste
+            // Vado a leggere le credenziali salvate
             if (File.Exists("credenziali.dat") == true)
             {
                 
@@ -110,6 +110,11 @@ namespace Client
 
                 ChkRicorda.IsChecked = true;
             }
+
+            // Carico le impostazioni
+            TXTpathCartella.Text = Settings.SynchPath;
+            NUDTimerValue.Value = Settings.TimerFrequency / 1000; // Converto i ms in secondi
+            
         }
 
         private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
@@ -125,7 +130,7 @@ namespace Client
             Logger.log("");
         }
 
-#endregion
+        #endregion
 
         #region SYSTEM TRAY
         protected void Exit_Click(Object sender, System.EventArgs e)
@@ -280,7 +285,7 @@ namespace Client
         {
             Watcher = new FileSystemWatcher()
             {
-                Path = Constants.PathClient,
+                Path = Settings.SynchPath,
 
                 //NotifyFilter = NotifyFilters.DirectoryName | NotifyFilters.FileName | NotifyFilters.LastWrite,
                 NotifyFilter = NotifyFilters.DirectoryName | NotifyFilters.FileName | NotifyFilters.LastWrite | NotifyFilters.CreationTime,
@@ -597,25 +602,33 @@ namespace Client
 
         private void SaveSettings(object sender, RoutedEventArgs e)
         {
-            //TODO togliere il path dalle constants e MEMORIZZARLO CON XML
-            if (string.IsNullOrWhiteSpace(TXTpathCartella.Text)){
-                System.Windows.MessageBox.Show("Inserisci il percorso della cartella da sincronizzare");
-                return;
-            }
-            else{
-                Properties.Settings.Default.Path = TXTpathCartella.Text;
-            }
-
-            //TODO togliere il timer dalle constants e MEMORIZZARLO CON XML
-            if (string.IsNullOrWhiteSpace(TXTpathCartella.Text))
+            #region Validazione Input
+            string synchPath = TXTpathCartella.Text;
+            if (Utilis.IsValidPath(synchPath) == false) // Controllo solo se è sintatticamente correto. se non esiste lo creo dopo
             {
-                System.Windows.MessageBox.Show("Inserisci il valore del timer");
+                Logger.Info("Inserito dbPath errato: " + synchPath);
+                System.Windows.MessageBox.Show("Attenzione, il percorso da sincronizzare è errato", "Errore percorso synch", MessageBoxButton.OK, MessageBoxImage.Error);
                 return;
             }
-            else {
-                Properties.Settings.Default.timer = Convert.ToInt32(timerValue.Value);
+            Settings.SynchPath = synchPath;
+
+            try
+            {
+                int timerInterval = Convert.ToInt32(NUDTimerValue.Value);
+                Settings.TimerFrequency = timerInterval * 1000; //converto secondi in millisecondi
+            }
+            catch (Exception)
+            {
+                Logger.Error("Inserita porta errata: " + NUDTimerValue.Value);
+                System.Windows.MessageBox.Show("Attenzione, valore intervallo timer errato", "Errore intervallo timer", MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
             }
 
+            Settings.SaveSettings();
+            #endregion
+
+            // TODO rendere effettive le modifiche
+            
         }
 
 

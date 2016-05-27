@@ -110,6 +110,7 @@
     </ApplicationDefinition>
     <Compile Include="Constants.cs" />
     <Compile Include="FileAttributeHelper.cs" />
+    <Compile Include="Settings.cs" />
     <Compile Include="Utilis.cs" />
     <Compile Include="Window1.xaml.cs">
       <DependentUpon>Window1.xaml</DependentUpon>

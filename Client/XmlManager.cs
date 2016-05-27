@@ -132,7 +132,7 @@ namespace Client
         /// <param name="absPath">Percorso assoluto della directory cancellata</param>
         public void DeleteElement(string absPath)
         {
-            string path = Utilis.AbsToRelativePath(absPath);
+            string path = Utilis.AbsToRelativePath(absPath, Settings.SynchPath);
             XElement el = this.getDirectoryElement(path);
 
             // Controllo se ho effettivamente trovato l'elemento, se è null allora significa che è un file
@@ -173,7 +173,7 @@ namespace Client
             string dirName = absPath.Split(Constants.PathSeparator.ToCharArray(), StringSplitOptions.RemoveEmptyEntries).Last();
 
             //Trovo la directory superiore corrispondente
-            string parentDir = Path.GetDirectoryName(Utilis.AbsToRelativePath(absPath));
+            string parentDir = Path.GetDirectoryName(Utilis.AbsToRelativePath(absPath, Settings.SynchPath));
             DirectoryInfo dirInfo = new DirectoryInfo(absPath);
 
             XElement parentDirElem = this.getDirectoryElement(parentDir);
