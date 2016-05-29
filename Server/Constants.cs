@@ -7,7 +7,7 @@ namespace Server
         /// <summary>
         /// Abilito o meno i LOG di tipo Debug
         /// </summary>
-        public const bool DebugEnabled = true;
+        public const bool DebugEnabled = false;
 
         /// <summary>
         /// Dimensione del campo comando

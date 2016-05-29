@@ -30,11 +30,11 @@ namespace Client
         {
             Exception last = null;
 
-            for (int i = 0; i < 5; i++)
+            for (int i = 0; i < 7; i++)
             {
                 try
                 {
-                    using (var stream = new BufferedStream(File.OpenRead(file), 512 * 1024))
+                    using (var stream = new BufferedStream(File.OpenRead(file)))
                     {
                         using (var md5 = MD5.Create())
                         {
@@ -46,7 +46,7 @@ namespace Client
                 }
                 catch (Exception e)
                 {
-                    Thread.Sleep(50);
+                    Thread.Sleep(75);
                     last = e;
                 }
             }

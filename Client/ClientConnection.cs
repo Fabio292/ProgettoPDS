@@ -51,10 +51,11 @@ namespace Client
                 this.isConnected = false;
 
                 //TODO setto i parametri della connessione
-                //conn.SendTimeout
+                conn.SendTimeout = 15000;
+                conn.ReceiveTimeout = 15000;
 
-                //TODO Prendere i dati dalla configurazione
-                conn.Connect("127.0.0.1", 10000);
+
+                conn.Connect(Settings.ServerIP, Settings.ServerPort);
 
                 this.isConnected = true;
                 Logger.log("Aperta connessione verso il server");
@@ -275,13 +276,13 @@ namespace Client
                     //fase A: il client guarda se il server abbia dei files aggiornati o nuovi
                     //li memorizza in una lista e li richiede al server
                     int elementsNumber = XmlManager.checkDiff(xmlRootServer, xmlRootClient, refList, ref r, path, refMap, 1);
-                    Logger.Info("l'elenco comandi inviati al server e': \n" + r);
-                    Logger.Info("il numero di elementi da inviare al server e': " + elementsNumber);
+                    Logger.Debug("l'elenco comandi inviati al server e': \n" + r);
+                    Logger.Info("il numero di elementi da chiedere al server e': " + elementsNumber);
                     if (elementsNumber != 0)
                     {
                         getFilesModifiedFromServer(elementsNumber, refMap, authToken);
                     }
-                        
+
                     #endregion
 
                     //pulizia variabili
@@ -297,7 +298,7 @@ namespace Client
                     //li memorizza in una lista e li invia al server
                     //guardo le differenze tra i due XDocuments e popolo r delle stringhe di richiesta da inviare al server
                     elementsNumber = XmlManager.checkDiff(xmlRootClient, xmlRootServer, refList, ref r, path, refMap, 0);
-                    Logger.Info("l'elenco comandi inviati al server e': \n" + r);
+                    Logger.Debug("l'elenco comandi inviati al server e': \n" + r);
                     Logger.Info("il numero di elementi da inviare al server e': " + elementsNumber);
 
                     if(elementsNumber == 0)
@@ -365,7 +366,7 @@ namespace Client
                 Utilis.SendCmdSync(conn, f);
 
                 Utilis.SendFile(conn, f.AbsFilePath, f.FileSize);
-                Logger.Info("Ho inviato il file " + f.AbsFilePath);
+                Logger.Debug("Ho inviato il file " + f.AbsFilePath);
             }
             #endregion
 
@@ -392,12 +393,12 @@ namespace Client
                 // Invio le informazioni sul file
                 Command requestedFile = new Command(CmdType.fileName, entry.Key);
                 Utilis.SendCmdSync(conn, requestedFile);
-                Logger.Info("Ho inviato la richiesta del file " + requestedFile.Payload);
+                Logger.Debug("Ho inviato la richiesta del file " + requestedFile.Payload);
 
                 //TODO cancellare il file precedente
                 Utilis.GetFile(conn, Utilis.RelativeToAbsPath(entry.Key, Settings.SynchPath), entry.Value.FileSize);
                 //TODO modificare la data di ultima modifica del file
-                Logger.Info("Ho ricevuto il file: " + entry.Key);
+                Logger.Debug("Ho ricevuto il file: " + entry.Key);
             }
             #endregion
             Logger.Info("Ho finito di scaricare dal server i files mancanti");

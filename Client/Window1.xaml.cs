@@ -12,6 +12,7 @@ using System.Diagnostics;
 using WinForms = System.Windows.Forms;
 using System.Net;
 using System.Windows.Media;
+using System.Collections.Concurrent;
 
 namespace Client
 {
@@ -30,8 +31,16 @@ namespace Client
         private Dictionary<string, List<VersionInfo>> remoteVersionMap = new Dictionary<string, List<VersionInfo>>();
         private List<string> deletedFilesList = new List<string>();
                
+        // TIMER
         static System.Timers.Timer TreeViewRefreshTimer;
-        
+
+        // Lista per gli eventi
+        //EventWaitHandle fswWaitHandle = new AutoResetEvent(false);
+        //private ConcurrentQueue<FSWEventListElement> fswEventQueue = new ConcurrentQueue<FSWEventListElement>();
+        readonly object _locker = new object();
+        private Queue<FSWEventListElement> fswEventQueue = new Queue<FSWEventListElement>();
+        Thread fswEventthread;
+
         private string authToken = Constants.DefaultAuthToken;
 
         #region COSTRUTTORE - USCITA
@@ -55,10 +64,10 @@ namespace Client
 
             MyNotifyIcon.Visible = true;
 
-            //foreach (TabItem item in TABControl.Items)
-            //{
-            //    item.Visibility = Visibility.Collapsed;
-            //}
+            foreach (TabItem item in TABControl.Items)
+            {
+                item.Visibility = Visibility.Collapsed;
+            }
 
             //((TabItem)TABControl.Items.GetItemAt(0)).Visibility = Visibility.Collapsed;
             //((TabItem)TABControl.Items.GetItemAt(1)).Visibility = Visibility.Collapsed;
@@ -78,9 +87,13 @@ namespace Client
 
             // genero l'xml
             // TODO fare in un thread a parte?
+            Logger.Info("START");
             XMLInstance = new XmlManager(new DirectoryInfo(Settings.SynchPath));
+            Logger.Info("XML CREATO");
             XMLInstance.SaveToFile(Constants.XmlSavePath + @"\x.xml");
+            Logger.Info("XML SALVATO");
             printXmlToTreeView();
+            Logger.Info("XML STAMPATO");
 
             // Avvio timer e watcher
             StartWatcher();
@@ -112,10 +125,21 @@ namespace Client
 
         private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
         {
+
             MyNotifyIcon.Visible = false;
             MyNotifyIcon.Dispose();
 
             cts.Cancel();
+
+            // Interrompo il thread per il fsw
+            lock (_locker)
+            {
+                // Metto in coda
+                fswEventQueue.Enqueue(null);
+                // Sveglio il thread
+                Monitor.Pulse(_locker);
+            }
+
             Logger.log("");
             Logger.log("--------------------------------------");
             Logger.log("|        CHIUSURA CLIENT             |");
@@ -190,10 +214,8 @@ namespace Client
 
         private void TreeViewRefreshTimerTick(object sender, ElapsedEventArgs e)
         {
-            //TODO rimuovere!!!
-            //XMLInstance = new XmlManager(new DirectoryInfo(Constants.PathClient));
             Logger.log("test timer");
-            //-----------------            
+ 
 
             try
             {
@@ -285,6 +307,9 @@ namespace Client
             Watcher.Renamed += new RenamedEventHandler(OnRenamed);
 
             Watcher.EnableRaisingEvents = false;
+
+            fswEventthread = new Thread(fswEventConsumer);
+            fswEventthread.Start();
         }
 
         private void StartWatcher()
@@ -305,46 +330,58 @@ namespace Client
         /// </summary>
         private void OnChanged(object source, FileSystemEventArgs e)
         {
+            
             try
             {
-                if (e.ChangeType == WatcherChangeTypes.Changed)
-                {
-                    // IGNORO le notifiche di tipo change su directory
-                    if (Utilis.IsDirectory(e.FullPath))
-                        return;
 
-                    Logger.Info("Changed FILE " + e.FullPath);
-                    FileAttributeHelper fileAttr = new FileAttributeHelper(e.FullPath);
-                    XMLInstance.RefreshFile(fileAttr);
-
-                }
-                else if (e.ChangeType == WatcherChangeTypes.Created)
+                lock (_locker)
                 {
-                    if (Utilis.IsDirectory(e.FullPath))
-                    {
-                        Logger.Info("Created DIR " + e.FullPath);
-                        XMLInstance.CreateDirectory(e.FullPath);
-                    }
-                    else
-                    {
-                        Logger.Info("Created FILE " + e.FullPath);
-                        FileAttributeHelper fileAttr = new FileAttributeHelper(e.FullPath);
-                        XMLInstance.CreateFile(fileAttr);
-
-                        // Se un file è stato creato dovrei rimuoverlo dalla lista
-                        deletedFilesList.Remove(Utilis.AbsToRelativePath(e.FullPath, Settings.SynchPath));
-                    }
-                    
-                }
-                else if (e.ChangeType == WatcherChangeTypes.Deleted)
-                {
-                    // Non posso sapere se è file o directory
-                    Logger.Info("DELETED  " + e.FullPath);
-                    XMLInstance.DeleteElement(e.FullPath, deletedFilesList);
+                    // Metto in coda
+                    fswEventQueue.Enqueue(new FSWEventListElement() { absPath = e.FullPath, ChangeType = e.ChangeType });
+                    // Sveglio il thread
+                    Monitor.Pulse(_locker);
                 }
 
+                //if (e.ChangeType == WatcherChangeTypes.Changed)
+                //{
+                //    // IGNORO le notifiche di tipo change su directory
+                //    if (Utilis.IsDirectory(e.FullPath))
+                //        return;
+                //
+                //    Logger.Debug("Changed FILE " + e.FullPath);
+                //    //FileAttributeHelper fileAttr = new FileAttributeHelper(e.FullPath);
+                //    //XMLInstance.RefreshFile(fileAttr);
+                //    //Thread.Sleep(Utilis.rndGen.Next(1, 5));
+                //
+                //}
+                //else if (e.ChangeType == WatcherChangeTypes.Created)
+                //{
+                //    if (Utilis.IsDirectory(e.FullPath))
+                //    {
+                //        Logger.Debug("Created DIR " + e.FullPath);
+                //        //XMLInstance.CreateDirectory(e.FullPath);
+                //        //Thread.Sleep(Utilis.rndGen.Next(1, 5));
+                //    }
+                //    else
+                //    {
+                //        Logger.Debug("Created FILE " + e.FullPath);
+                //        //FileAttributeHelper fileAttr = new FileAttributeHelper(e.FullPath);
+                //        //XMLInstance.CreateFile(fileAttr);
+                //        //Thread.Sleep(Utilis.rndGen.Next(1, 5));
+                //
+                //        // Se un file è stato creato dovrei rimuoverlo dalla lista
+                //        //deletedFilesList.Remove(Utilis.AbsToRelativePath(e.FullPath, Settings.SynchPath));
+                //    }
+                //   
+                //}
+                //else if (e.ChangeType == WatcherChangeTypes.Deleted)
+                //{
+                //    // Non posso sapere se è file o directory
+                //    Logger.Info("DELETED  " + e.FullPath);
+                //    //XMLInstance.DeleteElement(e.FullPath, deletedFilesList);
+                //    //Thread.Sleep(Utilis.rndGen.Next(1, 5));
+                //}
 
-                XMLInstance.SaveToFile(Constants.XmlSavePath + @"\x2.xml");                
 
             }
             catch (Exception ex)
@@ -363,7 +400,7 @@ namespace Client
         {
             try
             {
-                Logger.Info(e.ChangeType + " " + e.OldFullPath + " -> " + e.FullPath);
+                Logger.Debug(e.ChangeType + " " + e.OldFullPath + " -> " + e.FullPath);
 
                 if (Utilis.IsDirectory(e.FullPath))
                 {   // Directory
@@ -386,6 +423,75 @@ namespace Client
                 Logger.Error("[" + Path.GetFileName(sf.GetFileName()) + "(" + sf.GetFileLineNumber() + ")]: " + ex.Message);
             }
         }
+        
+        /// <summary>
+        /// Thread per gestire gli eventi del client
+        /// </summary>
+        private void fswEventConsumer()
+        {
+            try
+            {
+                while (true)                        
+                {
+                    FSWEventListElement element;
+                    lock (_locker)
+                    {
+                        while (fswEventQueue.Count == 0)
+                            Monitor.Wait(_locker);
+
+                        // Estraggo l'elemento
+                        element = fswEventQueue.Dequeue();
+
+                        // Se ricevo null significa che devo chiudere
+                        if (element == null)
+                            return;           
+                    }
+
+                    switch (element.ChangeType)
+                    {
+                        case WatcherChangeTypes.Changed:
+                            if (!Utilis.IsDirectory(element.absPath))
+                            {
+                                Logger.Debug("Changed FILE" + element.absPath);
+                                FileAttributeHelper fileAttr = new FileAttributeHelper(element.absPath);
+                                XMLInstance.RefreshFile(fileAttr);
+                            }
+                            break;
+
+                        case WatcherChangeTypes.Created:
+                            if (Utilis.IsDirectory(element.absPath))
+                            {
+                                Logger.Debug("Created DIR " + element.absPath);
+                                XMLInstance.CreateDirectory(element.absPath);
+                            }
+                            else
+                            {
+                                Logger.Debug("Created FILE " + element.absPath);
+                                FileAttributeHelper fileAttr = new FileAttributeHelper(element.absPath);
+                                XMLInstance.CreateFile(fileAttr);
+
+                                //Se un file è stato creato dovrei rimuoverlo dalla lista
+                                deletedFilesList.Remove(Utilis.AbsToRelativePath(element.absPath, Settings.SynchPath));
+                            }
+                            break;
+
+                        case WatcherChangeTypes.Deleted:
+                            Logger.Debug("Deleted " + element.absPath);
+                            XMLInstance.DeleteElement(element.absPath, deletedFilesList);
+                            break;
+                    }
+                }
+
+            }
+            catch (Exception ex)
+            {
+                StackTrace st = new StackTrace(ex, true);
+                StackFrame sf = Utilis.GetFirstValidFrame(st);
+
+                Logger.Error("[" + Path.GetFileName(sf.GetFileName()) + "(" + sf.GetFileLineNumber() + ")]: " + ex.Message);
+            }
+        }
+    
         #endregion
 
         #region TAB CHANGE
@@ -919,8 +1025,7 @@ namespace Client
         public long FileSize;
         public int versionID;
     }
-
-
+    
     public enum TabIndexEnum : int
     {
         Login,
@@ -928,6 +1033,12 @@ namespace Client
         Main,
         Restore,
         Settings
+    }
+
+    public class FSWEventListElement
+    {
+        public WatcherChangeTypes ChangeType;
+        public string absPath;
     }
 
 }

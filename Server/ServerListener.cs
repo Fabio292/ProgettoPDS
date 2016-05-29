@@ -137,10 +137,11 @@ namespace Server
         /// </summary>
         private void serveClientSync(TcpClient client, CancellationToken ct)
         {
-            
+
             //TODO spostare in configurazione
-            client.ReceiveTimeout = 1000000;            
-            
+            client.SendTimeout = 15000;
+            client.ReceiveTimeout = 15000;
+
 
             try
             {
@@ -744,7 +745,7 @@ namespace Server
                     }
                     #endregion
 
-                    Logger.Info(i + ") Ho ricevuto il file: " + destFileName);
+                    Logger.Debug(i + ") Ho ricevuto il file: " + destFileName);
                 }
                 #endregion
 

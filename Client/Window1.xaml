@@ -6,13 +6,42 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:Client"
         mc:Ignorable="d"
-        Title="Varmuskoopio" MinHeight="450" MinWidth="620" Height="450" Width="620" ResizeMode="CanResize" Closing="Window_Closing" Loaded="Window_Loaded" Background="#B25F9EA0">
+        Title="Varmuskoopio" MinHeight="470" MinWidth="620" Height="470" Width="620" ResizeMode="CanResize" Closing="Window_Closing" Loaded="Window_Loaded" Background="#B25F9EA0">
 
-
-    <!--<Grid Height="389" Background="#B25F9EA0" VerticalAlignment="Stretch">-->
 
     <DockPanel LastChildFill="True">
-        <TabControl x:Name="TABControl"  HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" VerticalAlignment="Stretch"  Grid.ColumnSpan="3">
+
+        <StatusBar  x:Name="StatusBarBottom" DockPanel.Dock="Bottom" Height="20">
+            <StatusBar.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <Grid Name="StatusBarGrid">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="0.2*" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="0.6*" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="0.2*" />
+                        </Grid.ColumnDefinitions>
+                    </Grid>
+                </ItemsPanelTemplate>
+            </StatusBar.ItemsPanel>
+
+            <StatusBarItem Grid.Column="0">
+                <TextBlock Name="lblStatusLeft" Text="TESTO"  />
+            </StatusBarItem>
+
+            <Separator Grid.Column="1" />
+            <StatusBarItem Grid.Column="2">
+                <TextBlock Name="lblStatusCenter"  Text="Stato dell'applicazione" />
+            </StatusBarItem>
+            <Separator Grid.Column="3" />
+
+            <StatusBarItem Grid.Column="4" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch">
+                <TextBlock Name="lblStatusRight" Text="TESTO  " TextAlignment="Right"/>
+            </StatusBarItem>
+        </StatusBar>
+
+        <TabControl x:Name="TABControl" Margin="0,-2,0,0"  HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" VerticalAlignment="Stretch" BorderThickness="0" Grid.ColumnSpan="3">
 
             <TabItem Header="Login">
                 <Grid Background="#B25F9EA0">
@@ -68,6 +97,7 @@
                     <Label Height="26" Margin="0,106,183,0" Name="link_a_registrazione" Foreground="Black" VerticalAlignment="Top" Grid.Row="3" Grid.ColumnSpan="2" Grid.RowSpan="2">
                         <Hyperlink Click="AddAccount" Foreground="Black" FontWeight="Bold">Non possiedi un account? Registrati</Hyperlink>
                     </Label>
+                
                 </Grid>
             </TabItem>
 
@@ -141,35 +171,8 @@
 
             <TabItem Header="Main">
                 <DockPanel Background="#B25F9EA0" >
-                    <StatusBar Name="StatusBarBottom" DockPanel.Dock="Bottom" Height="20">
-                        <StatusBar.ItemsPanel>
-                            <ItemsPanelTemplate>
-                                <Grid Name="StatusBarGrid">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="0.2*" />
-                                        <ColumnDefinition Width="Auto" />
-                                        <ColumnDefinition Width="0.6*" />
-                                        <ColumnDefinition Width="Auto" />
-                                        <ColumnDefinition Width="0.2*" />
-                                    </Grid.ColumnDefinitions>
-                                </Grid>
-                            </ItemsPanelTemplate>
-                        </StatusBar.ItemsPanel>
 
-                        <StatusBarItem Grid.Column="0">
-                            <TextBlock Name="lblStatusLeft" Text="TESTO"  />
-                        </StatusBarItem>
 
-                        <Separator Grid.Column="1" />
-                        <StatusBarItem Grid.Column="2">
-                            <TextBlock Name="lblStatusCenter"  Text="Stato dell'applicazione" />
-                        </StatusBarItem>
-                        <Separator Grid.Column="3" />
-
-                        <StatusBarItem Grid.Column="4" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch">
-                            <TextBlock Name="lblStatusRight" Text="TESTO  " TextAlignment="Right"/>
-                        </StatusBarItem>
-                    </StatusBar>
 
                     <Grid>
                         <Grid.ColumnDefinitions>
@@ -363,7 +366,7 @@
                                 </Grid.ColumnDefinitions>
 
 
-                                <xctk:IntegerUpDown x:Name="NUDTimerValue" Grid.Column="0" Grid.Row="1" Maximum="600" Minimum="5" VerticalAlignment="Center" Value="60" />
+                                <xctk:IntegerUpDown x:Name="NUDTimerValue" Grid.Column="0" Grid.Row="1" Maximum="600" Minimum="30" AllowSpin="True" VerticalAlignment="Center" Value="60" />
 
                             </Grid>
 
@@ -410,6 +413,6 @@
             </TabItem>
 
         </TabControl>
+
     </DockPanel>
-    <!--</Grid>-->
 </Window>

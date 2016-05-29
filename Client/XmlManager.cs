@@ -164,8 +164,10 @@ namespace Client
             // Aggiungo gli attributi
             file.SetAttributeValue(FileAttributeName, Path.GetFileName(fa.RelFilePath));
             file.SetAttributeValue(FileAttributeLastModTime, fa.LastModtime.ToString(Constants.XmlDateFormat));
-            file.SetAttributeValue(FileAttributeSize, fa.Size.ToString());
-            file.SetAttributeValue(FileAttributeChecksum, fa.Md5);
+
+            // Ottimizzazioni: alla creazione il file è vuoto
+            file.SetAttributeValue(FileAttributeSize, 0);
+            file.SetAttributeValue(FileAttributeChecksum, Constants.EmptyFileDigest); 
 
             dir.Add(file);
         }
@@ -182,7 +184,7 @@ namespace Client
 
             //Trovo la directory superiore corrispondente
             string parentDir = Path.GetDirectoryName(Utilis.AbsToRelativePath(absPath, Settings.SynchPath));
-            DirectoryInfo dirInfo = new DirectoryInfo(absPath);
+            //DirectoryInfo dirInfo = new DirectoryInfo(absPath);
 
             XElement parentDirElem = this.getDirectoryElement(parentDir);
 
@@ -212,8 +214,12 @@ namespace Client
             // prendo il FIRST dell'array ritornato dalla where perchè il filesystem mi garantisce l'univocità dei nomi
             // degli oggetti (directory o file) presenti in una directory
             foreach (string elem in pathElement)
+            {
                 ret = ret.Elements(DirectoryElementName).Where(elt => elt.Attribute(DirectoryAttributeName).Value == elem).FirstOrDefault();
-            
+                if (ret == null)
+                    break;
+            }
+
             return ret;
         }
 

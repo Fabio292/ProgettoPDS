@@ -15,13 +15,13 @@ namespace Client
             // only one thread can own this lock, so other threads
             // entering this method will wait here until lock is
             // available.
-            lock (_syncObject)
-            {
+            //lock (_syncObject)
+            //{
                 StreamWriter fs = new StreamWriter("log.txt", true);
 
                 fs.Write("[" + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fffff") + "](" + Thread.CurrentThread.ManagedThreadId + ") " + msg + "\n");
                 fs.Close();
-            }
+            //}
         }
 
         public static void Info(string msg)

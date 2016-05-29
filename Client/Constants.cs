@@ -7,7 +7,7 @@ namespace Client
         /// <summary>
         /// Abilito o meno i LOG di tipo Debug
         /// </summary>
-        public const bool DebugEnabled = true;
+        public const bool DebugEnabled = false;
         
         /// <summary>
         /// Dimensione del campo comando
@@ -98,6 +98,11 @@ namespace Client
         /// AuthToken del server, per la mutua autenticazione
         /// </summary>
         public const string ServerAuthToken = "AK3Y8TPZE9XT";
+
+        /// <summary>
+        /// MD5 di un file vuoto
+        /// </summary>
+        public const string EmptyFileDigest = "d41d8cd98f00b204e9800998ecf8427e";
     }
 
     /// <summary>
