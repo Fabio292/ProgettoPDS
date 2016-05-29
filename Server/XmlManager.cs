@@ -19,6 +19,7 @@ namespace Server
         public static readonly string FileAttributeLastModTime = "modTime";
         public static readonly string FileAttributeSize = "dim";
         public static readonly string FileAttributeChecksum = "md5";
+        public static readonly string FileAttributeVersion = "id";
         #endregion
 
         private XDocument _xmlDoc;

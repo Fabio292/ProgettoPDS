@@ -281,6 +281,7 @@ namespace Client
 
         }
 
+
         /// <summary>
         /// invia al server i files creati/modificati
         /// </summary>
@@ -397,5 +398,15 @@ namespace Client
             Utilis.SendCmdSync(this.conn, cmd);
         }
 
+
+        /// <summary>
+        /// Invio OK</summary>
+        /// <param name="client">Connessione TCP al client</param>
+        /// <param name="payload">Eventuale payload da inserire</param>
+        private static void sendOk(TcpClient client, string payload = "")
+        {
+            Command cmd = new Command(CmdType.ok, payload);
+            Utilis.SendCmdSync(client, cmd);
+        }
     }
 }

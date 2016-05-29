@@ -6,7 +6,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:Client"
         mc:Ignorable="d"
-        Title="Varmuskoopio" MinHeight="420" MinWidth="600" Height="420" Width="600" ResizeMode="CanResize" Closing="Window_Closing" Loaded="Window_Loaded" Background="#B25F9EA0">
+        Title="Varmuskoopio" MinHeight="450" MinWidth="620" Height="450" Width="620" ResizeMode="CanResize" Closing="Window_Closing" Loaded="Window_Loaded" Background="#B25F9EA0">
 
 
     <!--<Grid Height="389" Background="#B25F9EA0" VerticalAlignment="Stretch">-->
@@ -63,7 +63,7 @@
 
                     </Grid>
 
-                    <Button x:Name="login" Content="Login" Grid.Column="1" Grid.Row="3" HorizontalAlignment="Center" Margin="80,30,80,0" FontWeight="Bold"  MinHeight="50" Width="100" VerticalAlignment="Top" Background="AliceBlue"  Click="checkLogin"/>
+                    <Button x:Name="BTNLogin" Content="Login" Grid.Column="1" Grid.Row="3" HorizontalAlignment="Center" Margin="80,30,80,0" FontWeight="Bold"  MinHeight="50" Width="100" VerticalAlignment="Top" Background="AliceBlue"  Click="BTNLogin_Clicked"/>
 
                     <Label Height="26" Margin="0,106,183,0" Name="link_a_registrazione" Foreground="Black" VerticalAlignment="Top" Grid.Row="3" Grid.ColumnSpan="2" Grid.RowSpan="2">
                         <Hyperlink Click="AddAccount" Foreground="Black" FontWeight="Bold">Non possiedi un account? Registrati</Hyperlink>
@@ -134,7 +134,7 @@
                     </Grid>
 
 
-                    <Button x:Name="BTNRegistration" Content="Registrati" Grid.Column="1" Grid.Row="4" HorizontalAlignment="Center" Margin="80,30,80,0" FontWeight="Bold"  MinHeight="50" Width="100" VerticalAlignment="Top" Background="AliceBlue"  Click="checkLogin"/>
+                    <Button x:Name="BTNRegistration" Content="Registrati" Grid.Column="1" Grid.Row="4" HorizontalAlignment="Center" Margin="80,30,80,0" FontWeight="Bold"  MinHeight="50" Width="100" VerticalAlignment="Top" Background="AliceBlue"  Click="BTNRegistration_Click"/>
 
                 </Grid>
             </TabItem>
@@ -213,35 +213,92 @@
                     </Grid.ColumnDefinitions>
 
                     <Grid.RowDefinitions>
-                        <RowDefinition Height="5" />
+                        <RowDefinition Height="21" />
                         <RowDefinition Height="*" />
                         <RowDefinition Height="35" />
                     </Grid.RowDefinitions>
 
+                    <Label x:Name="LBLRestoretrw" Content="Backup" Grid.Column="0" Grid.Row="0" Padding="0" Margin="12,2,6,0" FontSize="15"/>
+                    <Label x:Name="LBLversion"  Content="Versioni disponibili"  Grid.Column="1" Grid.Row="0" Padding="0" Margin="6,2,12,0" FontSize="15"/>
+
                     <TreeView x:Name="TRWRestore" Grid.Column="0" Grid.Row="1" VerticalAlignment="Stretch" HorizontalAlignment="Stretch"
-                              Margin="12,10,6,10" SelectedItemChanged="TRWGeneral_SelectedItemChanged"/>
+                              Margin="12,3,6,0" TreeViewItem.Selected="TRWGeneral_SelectedItemChanged"/>
 
                     <ListBox x:Name="LSTFileVersion" Grid.Column="1" Grid.Row="1" VerticalAlignment="Stretch" HorizontalAlignment="Stretch" 
-                             Margin="6,10,12,10" />
+                             Margin="6,3,12,0" SelectionChanged="LSTFileVersion_SelectionChanged" />
 
-                    <Button x:Name="backButton" Grid.Column="2" Grid.Row="2" Content="Menu principale" FontWeight="Bold" Background="AliceBlue" Height="30" Width="120" Click="BackToMainButton"/>
+                    <Button x:Name="BTNRestoreToMain" Grid.Column="2" Grid.Row="2" Content="Menu principale" FontWeight="Bold" Background="AliceBlue" Height="30" Width="120" Click="BTNRestoreToMain_Click"/>
 
-                    <Grid Grid.Column="2" Grid.Row="1">
+                    <!--Griglia box-->
+                    <Grid Grid.Column="2" Grid.Row="0" Grid.RowSpan="2">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
 
                         <Grid.RowDefinitions>
-                            <RowDefinition Height="5" />
-                            <RowDefinition Height="50*" />
-                            <RowDefinition Height="50*" />
+                            <RowDefinition Height="142" />
+                            <RowDefinition Height="143" />
+                            <RowDefinition Height="71" />
                         </Grid.RowDefinitions>
 
-                        <GroupBox x:Name="GRBRemoteVersion" Header="Versione Server" Grid.Column="0" Grid.Row="1" Margin="0,0,5,15">
+                        <GroupBox x:Name="GRBRemoteVersion" Header="Versione Server" FontSize="15" Grid.Column="0" Grid.Row="0" Margin="0,15,5,5">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="5" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="1" />
+                                </Grid.ColumnDefinitions>
+
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="5" />
+                                    <RowDefinition Height="20*" />
+                                    <RowDefinition Height="30*" />
+                                    <RowDefinition Height="20*" />
+                                    <RowDefinition Height="30*" />
+                                    <!--<RowDefinition Height="13*" />
+                                    <RowDefinition Height="20*" />-->
+                                </Grid.RowDefinitions>
+
+                                <Label x:Name="LBLRemoteDate" Grid.Column="1" Grid.Row="1" Content="Ultima Modifica:" Padding="0"  FontSize="15"/>
+                                <Label x:Name="LBLRemoteDateValue" Grid.Column="1" Grid.Row="2" Content="" Padding="0" FontSize="15"/>
+                                <Label x:Name="LBLRemoteSize" Grid.Column="1" Grid.Row="3" Content="Dimensione:" Padding="0" FontSize="15"/>
+                                <Label x:Name="LBLRemoteSizeValue" Grid.Column="1" Grid.Row="4" Content="" Padding="0" FontSize="15"/>
+                                <!--<Label x:Name="LBLRemoteMd5" Grid.Column="1" Grid.Row="5" Content="Digest:" Padding="0"/>
+                                <Label x:Name="LBLRemoteMd5Value" Grid.Column="1" Grid.Row="6" Content="63068245783102541109255561453874" Padding="0" FontSize="10"/>-->
+
+                            </Grid>
                         </GroupBox>
 
-                        <GroupBox x:Name="GRBLocalVersion" Header="Versione Locale" Grid.Column="0" Grid.Row="2" Margin="0,0,5,15">
+                        <GroupBox x:Name="GRBLocalVersion" Header="Versione Locale" FontSize="15" Grid.Column="0" Grid.Row="1" Margin="0,0,5,10">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="5" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="1" />
+                                </Grid.ColumnDefinitions>
+
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="5" />
+                                    <RowDefinition Height="20*" />
+                                    <RowDefinition Height="30*" />
+                                    <RowDefinition Height="20*" />
+                                    <RowDefinition Height="30*" />
+                                    <!--<RowDefinition Height="13*" />
+                                    <RowDefinition Height="20*" />-->
+                                </Grid.RowDefinitions>
+
+                                <Label x:Name="LBLLocalDate" Grid.Column="1" Grid.Row="1" Content="Ultima Modifica:" Padding="0" FontSize="15"/>
+                                <Label x:Name="LBLLocalDateValue" Grid.Column="1" Grid.Row="2" Content="" Padding="0" FontSize="15"/>
+                                <Label x:Name="LBLLocalSize" Grid.Column="1" Grid.Row="3" Content="Dimensione:" Padding="0" FontSize="15"/>
+                                <Label x:Name="LBLLocalSizeValue" Grid.Column="1" Grid.Row="4" Content="" Padding="0" FontSize="15"/>
+                                <!--<Label x:Name="LBLLocalMd5" Grid.Column="1" Grid.Row="5" Content="Digest:" Padding="0"/>
+                                <Label x:Name="LBLLocalMd5Value" Grid.Column="1" Grid.Row="6" Content="63068245783102541109255561453874" Padding="0"/>-->
+
+                            </Grid>
                         </GroupBox>
+
+                        <Button x:Name="BTNRestore" Content="Ripristina file" Grid.Row="2" FontWeight="Bold" Background="AliceBlue" Height="30" Width="120"
+                                HorizontalAlignment="center" VerticalAlignment="Top" Margin="0,10,0,0" Click="BTNRestore_Click"/>
 
 
                     </Grid>
@@ -259,11 +316,11 @@
                     </Grid.ColumnDefinitions>
 
                     <Grid.RowDefinitions>
-                        <RowDefinition Height="10" />
-                        <RowDefinition Height="35*" />
-                        <RowDefinition Height="35*" />
-                        <RowDefinition Height="30*" />
-                        <RowDefinition Height="10" />
+                        <RowDefinition Height="0" />
+                        <RowDefinition Height="180" />
+                        <RowDefinition Height="100" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="0" />
                     </Grid.RowDefinitions>
 
                     <GroupBox x:Name="GRBGeneralSettings" Header="Impostazioni Generali" Grid.Column="1" Grid.Row="1" Margin="0,0,0,5">
@@ -277,8 +334,9 @@
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="18" />
                                 <RowDefinition Height="30" />
-                                <RowDefinition Height="15" />
+                                <RowDefinition Height="18" />
                                 <RowDefinition Height="30" />
+                                <RowDefinition Height="48" />
                             </Grid.RowDefinitions>
 
                             <Label x:Name="inserisciPath" Grid.Column="1" Grid.Row="0" Content="Cartella da sincronizzare" Height="15" Padding="0" 
@@ -286,12 +344,13 @@
 
                             <Grid Grid.Column="1" Grid.Row="1">
                                 <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="90*" />
-                                    <ColumnDefinition Width="10*" />
+                                    <ColumnDefinition Width="440" />
+                                    <ColumnDefinition Width="40" />
+                                    <ColumnDefinition Width="*" />
                                 </Grid.ColumnDefinitions>
 
                                 <TextBox x:Name="TXTpathCartella" Grid.Column="0" TextWrapping="NoWrap" HorizontalAlignment="Stretch" VerticalAlignment="Center"/>
-                                <Button x:Name="browserPath" Grid.Column="1" Content="..." Margin="5,0,0,0" VerticalAlignment="Center" FontWeight="Bold" Background="AliceBlue" Click="BrowseDirectory"/>
+                                <Button x:Name="BTNBrowseFolder" Grid.Column="1" Content="..." Margin="5,0,0,0" VerticalAlignment="Center" FontWeight="Bold" Background="AliceBlue" Click="BTNBrowseFolder_Clicked"/>
                             </Grid>
 
                             <Label x:Name="inserisciTimer" Grid.Column="1" Grid.Row="2" Content="Modifica la frequenza del Timer (secondi)" Height="15" Padding="0"
@@ -299,8 +358,8 @@
 
                             <Grid Grid.Column="1" Grid.Row="3">
                                 <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="30*" />
-                                    <ColumnDefinition Width="70*" />
+                                    <ColumnDefinition Width="130" />
+                                    <ColumnDefinition Width="*" />
                                 </Grid.ColumnDefinitions>
 
 
@@ -308,14 +367,43 @@
 
                             </Grid>
 
+
+                            <Grid Grid.Column="1" Grid.Row="4">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="200" />
+                                    <ColumnDefinition Width="5" />
+                                    <ColumnDefinition Width="150" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="18" />
+                                    <RowDefinition Height="30" />
+                                </Grid.RowDefinitions>
+
+                                <Label x:Name="LBLServerIP" Grid.Column="0" Grid.Row="0" Content="IP Server" Height="15" Padding="0"
+                                   HorizontalAlignment="Stretch" VerticalAlignment="Center" />
+
+                                <Label x:Name="LBLServerSep" Grid.Column="1" Grid.Row="1" Content=":" Height="15" Padding="0" Margin="1,0,0,0" HorizontalContentAlignment="Center"
+                                   HorizontalAlignment="Stretch" VerticalAlignment="Center" />
+
+                                <Label x:Name="LBLServerPort" Grid.Column="2" Grid.Row="0" Content="Porta Server" Height="15" Padding="0"
+                                   HorizontalAlignment="Stretch" VerticalAlignment="Center" />
+
+                                <TextBox x:Name="TXTServerIP" Grid.Column="0" Grid.Row="1" TextWrapping="NoWrap" HorizontalAlignment="Stretch" VerticalAlignment="Center"/>
+                                <TextBox x:Name="TXTServerPort" Grid.Column="2" Grid.Row="1" TextWrapping="NoWrap" HorizontalAlignment="Stretch" VerticalAlignment="Center"/>
+
+
+                            </Grid>
+
                         </Grid>
                     </GroupBox>
 
-                    <GroupBox x:Name="GRBColorSettings" Header="Impostazioni Grafica" Grid.Column="1" Grid.Row="2" Margin="0,5,0,0">
+                    <GroupBox x:Name="GRBColorSettings" Header="Impostazioni Grafica" Grid.Column="1" Grid.Row="2" Margin="0,0,0,0">
 
                     </GroupBox>
 
-                    <Button x:Name="BTNSaveSettings" Content="Salva impostazioni" Grid.Column="1" Grid.Row="3" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="Bold" Background="AliceBlue" MinHeight="50" Width="120" Click="SaveSettings"/>
+                    <Button x:Name="BTNSaveSettings" Content="Salva impostazioni" Grid.Column="1" Grid.Row="3" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="Bold" Background="AliceBlue" MinHeight="50" Width="120" Click="BTNSaveSettings_Click"/>
 
                 </Grid>
 

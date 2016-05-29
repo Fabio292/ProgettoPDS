@@ -733,8 +733,8 @@ namespace Server
                     FileInfoCommand info = new FileInfoCommand(Utilis.GetCmdSync(client));
 
                     // Genero il nome univoco per il file
-                    string destFileName = Utilis.Md5String(Path.GetFileName(info.AbsFilePath)) + "_"
-                        + Utilis.RandomString(5) + "." + latestVersionId;
+                    string destFileName = Utilis.Md5String(Path.GetFileName(info.RelFilePath)) + "_"
+                        + Utilis.RandomString(Constants.RNDNameLength) + "." + latestVersionId;
 
                     // Ricevo e salvo il file
                     string destFilePathAbs = basePathAbs + destFileName;

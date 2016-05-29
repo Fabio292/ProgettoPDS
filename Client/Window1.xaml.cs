@@ -10,19 +10,11 @@ using System.Windows.Forms;
 using System.Xml.Linq;
 using System.Diagnostics;
 using WinForms = System.Windows.Forms;
-
-
+using System.Net;
+using System.Windows.Media;
 
 namespace Client
 {
-
-    public class VersionInfo
-    {
-        public string Md5;
-        public DateTime LastModTime;
-        public long FileSize;
-    }
-
     /// <summary>
     /// Logica di interazione per Window1.xaml
     /// </summary>
@@ -33,12 +25,11 @@ namespace Client
         private FileSystemWatcher Watcher;
         private XmlManager XMLInstance;
         private System.Windows.Forms.NotifyIcon MyNotifyIcon;
-        private Dictionary<string, FileAttributeHelper> fileEditedMap = new Dictionary<string, FileAttributeHelper>();
         private System.Windows.Forms.ContextMenu menu_tray;
 
         private Dictionary<string, List<VersionInfo>> remoteVersionMap = new Dictionary<string, List<VersionInfo>>();
+        private List<string> deletedFilesList = new List<string>();
                
-
         static System.Timers.Timer TreeViewRefreshTimer;
         
         private string authToken = Constants.DefaultAuthToken;
@@ -114,6 +105,8 @@ namespace Client
             // Carico le impostazioni
             TXTpathCartella.Text = Settings.SynchPath;
             NUDTimerValue.Value = Settings.TimerFrequency / 1000; // Converto i ms in secondi
+            TXTServerIP.Text = Settings.ServerIP;
+            TXTServerPort.Text = Settings.ServerPort.ToString();
             
         }
 
@@ -170,15 +163,7 @@ namespace Client
             base.OnStateChanged(e);
         }
 
-        #endregion
-        
-
-        private void BtnStartSynch_Click(object sender, RoutedEventArgs e)
-        {
-            XMLInstance.SaveToFile(Constants.XmlSavePath + @"\x.xml");
-            client.ClientSync(XMLInstance, authToken);
-        }
-
+        #endregion                
 
         #region TIMER
         private void ConfigureTimer()
@@ -237,7 +222,6 @@ namespace Client
         }
         #endregion
 
-
         #region XML TO TREEVIEW
         private void printXmlToTreeView()
         {
@@ -278,7 +262,6 @@ namespace Client
             return ret;
         }
         #endregion
-
 
         #region FILESYSTEM WATCHER
         private void ConfigureWatcher()
@@ -353,6 +336,9 @@ namespace Client
                         Logger.Info("Created FILE " + e.FullPath);
                         FileAttributeHelper fileAttr = new FileAttributeHelper(e.FullPath);
                         XMLInstance.CreateFile(fileAttr);
+
+                        // Se un file è stato creato dovrei rimuoverlo dalla lista
+                        deletedFilesList.Remove(Utilis.AbsToRelativePath(e.FullPath, Settings.SynchPath));
                     }
                     
                 }
@@ -360,7 +346,7 @@ namespace Client
                 {
                     // Non posso sapere se è file o directory
                     Logger.Info("DELETED  " + e.FullPath);
-                    XMLInstance.DeleteElement(e.FullPath);
+                    XMLInstance.DeleteElement(e.FullPath, deletedFilesList);
                 }
 
 
@@ -408,9 +394,45 @@ namespace Client
         }
         #endregion
 
-
         #region TAB CHANGE
-       
+
+        /// <summary>
+        /// Penso serva a tornare nel main
+        /// </summary>
+        private void BTNRestoreToMain_Click(object sender, RoutedEventArgs e)
+        {
+            TABControl.SelectedIndex = 2;
+        }
+
+
+        private void GotoLogin()
+        {
+            TABControl.SelectedIndex = (int)TabIndexEnum.Login;
+        }
+
+        private void GotoRegistration()
+        {
+            TABControl.SelectedIndex = (int)TabIndexEnum.Registration;
+        }
+
+        private void GotoMain()
+        {
+            TABControl.SelectedIndex = (int)TabIndexEnum.Main;
+        }
+
+        private void GotoRestore()
+        {
+            TABControl.SelectedIndex = (int)TabIndexEnum.Restore;
+        }
+        
+        private void GotoSettings()
+        {
+            TABControl.SelectedIndex = (int)TabIndexEnum.Settings;
+        }
+
+        #endregion
+
+        #region ACCOUNT MANAGE
         /// <summary>
         /// funzione chiamata al premere del link "Non possiedi un account? Registrati", crea il nuovo account e redirezione su MainWindow
         /// </summary>
@@ -421,20 +443,10 @@ namespace Client
         }
 
         /// <summary>
-        /// Penso serva a tornare nel main
-        /// </summary>
-        private void BackToMainButton(object sender, RoutedEventArgs e)
-        {
-            TABControl.SelectedIndex = 2;
-        }
-        #endregion
-
-        #region User Interaction
-        /// <summary>
         /// funzione chiamata al premere del pulsante Login, controlla i dati inseriti e permette l'accesso a Window1
         /// (sia per la checkLogin sia per la sendRegistration)
         /// </summary>
-        private void checkLogin(object sender, RoutedEventArgs e)
+        private void BTNLogin_Clicked(object sender, RoutedEventArgs e)
         {
             string username = "";
             string pwd = "";
@@ -462,13 +474,13 @@ namespace Client
                     System.Windows.MessageBox.Show("lunghezza password non valida" + pwd);
                     return;
                 }
-            
+
                 // Salvo le credenziali su file per ricordarmele in futuro
-                if(ChkRicorda.IsChecked == true)
+                if (ChkRicorda.IsChecked == true)
                 {
                     // Salvo le credenziali su file
                     //using(FileStream fs = new FileStream("credenziali.dat", FileMode.OpenOrCreate))
-                    using(StreamWriter sw = new StreamWriter("credenziali.dat", false))
+                    using (StreamWriter sw = new StreamWriter("credenziali.dat", false))
                     {
                         sw.WriteLine(username);
                         sw.WriteLine(pwd);
@@ -490,9 +502,9 @@ namespace Client
                 return;
             }
             #endregion
-            
 
-            if(client.ClientLogin(username, pwd, ref this.authToken) == true)
+
+            if (client.ClientLogin(username, pwd, ref this.authToken) == true)
             {
                 // Login OK
                 TABControl.SelectedIndex = 2;
@@ -502,16 +514,15 @@ namespace Client
                 TABControl.SelectedIndex = 0;
                 return;
             }
-                
-                
 
+
+            // Prima synch
             try
             {
                 client.ClientSync(XMLInstance, this.authToken);
             }
             catch (Exception ex)
             {
-                //TODO visualizzare all'utente?
                 System.Windows.MessageBox.Show(ex.Message, "Errore Login", MessageBoxButton.OK, MessageBoxImage.Error);
 
                 StackTrace st = new StackTrace(ex, true);
@@ -523,11 +534,11 @@ namespace Client
                 TABControl.SelectedIndex = 0;
             }
         }
-        
+
         /// <summary>
         /// funzione chiamata al premere del pulsante Registrati, controlla i dati inseriti e permette l'accesso a MainWindow
         /// </summary>
-        private void sendRegistration(object sender, RoutedEventArgs e)
+        private void BTNRegistration_Click(object sender, RoutedEventArgs e)
         {
             string username = "";
             string password = "";
@@ -585,8 +596,7 @@ namespace Client
                 return;
             }
             #endregion
-
-
+            
             if(client.ClientRegistration(username, password, ref this.authToken) == true)
             {
                 //TODO benvenuto-tutorial
@@ -597,12 +607,21 @@ namespace Client
                 TABControl.SelectedIndex = 1;
                 return;
             }            
+
+            
         }
         #endregion
 
-        private void SaveSettings(object sender, RoutedEventArgs e)
+        #region SETTINGS TAB
+        private void BtnSettings_Click(object sender, RoutedEventArgs e)
+        {
+            TABControl.SelectedIndex = 4;
+        }
+
+        private void BTNSaveSettings_Click(object sender, RoutedEventArgs e)
         {
             #region Validazione Input
+            // PERCORSO CARTELLA SINCRONIZZAZIONE
             string synchPath = TXTpathCartella.Text;
             if (Utilis.IsValidPath(synchPath) == false) // Controllo solo se è sintatticamente correto. se non esiste lo creo dopo
             {
@@ -610,43 +629,79 @@ namespace Client
                 System.Windows.MessageBox.Show("Attenzione, il percorso da sincronizzare è errato", "Errore percorso synch", MessageBoxButton.OK, MessageBoxImage.Error);
                 return;
             }
-            Settings.SynchPath = synchPath;
 
+            //INTERVALLO TIMER
+            int timerInterval = 0;
             try
             {
-                int timerInterval = Convert.ToInt32(NUDTimerValue.Value);
-                Settings.TimerFrequency = timerInterval * 1000; //converto secondi in millisecondi
+                timerInterval = Convert.ToInt32(NUDTimerValue.Value);
             }
             catch (Exception)
             {
-                Logger.Error("Inserita porta errata: " + NUDTimerValue.Value);
+                Logger.Error("Inserito intervallo timer errato: " + NUDTimerValue.Value);
                 System.Windows.MessageBox.Show("Attenzione, valore intervallo timer errato", "Errore intervallo timer", MessageBoxButton.OK, MessageBoxImage.Error);
                 return;
             }
 
+            //IP SERVER
+            string serverIP = TXTServerIP.Text;
+            IPAddress address;
+            if(IPAddress.TryParse(serverIP, out address))
+            {
+                if(address.AddressFamily != System.Net.Sockets.AddressFamily.InterNetwork)
+                {
+                    //IP non IPV4
+                    Logger.Error("Inserito IP errato: " + serverIP);
+                    System.Windows.MessageBox.Show("Attenzione, IP server errato", "Errore IP server", MessageBoxButton.OK, MessageBoxImage.Error);
+                    return;
+                }
+            }
+            else
+            {
+                //IP non valido
+                Logger.Error("Inserito IP errato: " + serverIP);
+                System.Windows.MessageBox.Show("Attenzione, IP server errato", "Errore IP server", MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
+
+            //PORTA SERVER
+            int serverPort = 0;
+            try
+            {
+                serverPort = Convert.ToInt32(TXTServerPort.Text);
+            }
+            catch (Exception)
+            {
+                Logger.Error("Inserita porta server non valida: " + TXTServerPort.Text);
+                System.Windows.MessageBox.Show("Attenzione, porta server non valida", "Errore porta server", MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
+
+            // Se sono arrivato qua tutti i settings sono corretti
+            Settings.SynchPath = synchPath;
+            Settings.TimerFrequency = timerInterval * 1000; //converto secondi in millisecondi
+            Settings.ServerIP = serverIP;
+            Settings.ServerPort = serverPort;
+
             Settings.SaveSettings();
             #endregion
 
-            // TODO rendere effettive le modifiche
+            Logger.Info("Nuove impostazioni salvate");
             
+            // TODO rendere effettive le modifiche
         }
 
-
-        private void BrowseDirectory(object sender, RoutedEventArgs e)
+        private void BTNBrowseFolder_Clicked(object sender, RoutedEventArgs e)
         {
             var dialog = new WinForms.FolderBrowserDialog();
             WinForms.DialogResult result = dialog.ShowDialog();
             TXTpathCartella.Text = dialog.SelectedPath;
             Properties.Settings.Default.Path = dialog.SelectedPath;
+
         }
+        #endregion
 
-
-        private void BtnSettings_Click(object sender, RoutedEventArgs e)
-        {
-            TABControl.SelectedIndex = 4;
-        }
-
-        #region RESTORE
+        #region RESTORE TAB
         /// <summary>
         /// La funzione permette di accedere alla scheda contenente lo storico della cartella. 
         /// E' possibile procedere con il ripristino di una delle versioni precedenti
@@ -658,16 +713,17 @@ namespace Client
             // TODO faccio una Client.synch
             ///TODO invio la richiesta al server -> XML con i dati della cartella (history)
             ///TODO il server risponde inviandomi l'XML
-            if (!File.Exists(@"D:\PDSCartellaPDS\fileXML.xml")) {
+            if (!File.Exists(@"D:\PDSCartellaPDS\fileXML.xml"))
+            {
                 throw new Exception();
             }
             XmlManager temp = new XmlManager(@"D:\PDSCartellaPDS\fileXML.xml");
             XElement root = temp.GetRoot();
             TRWRestore.Items.Clear();
             remoteVersionMap.Clear();
-            
+
             TreeViewItem trwRoot = xmlToTreeViewRestore(root, "");
-            trwRoot.Header = "cartella root"; // TODO mettere il nome della cartella di synch del client
+            trwRoot.Header = "Cartella Backup"; // TODO mettere il nome della cartella di synch del client
 
             TRWRestore.Items.Add(trwRoot);
             ((TreeViewItem)TRWRestore.Items.GetItemAt(0)).IsExpanded = true;
@@ -703,12 +759,13 @@ namespace Client
                 // Ciclo sulle varie versioni
                 foreach (XElement version in fileElement.Elements("version")) // TODO spostare nelle costanti del xml
                 {
-                    VersionInfo v = new VersionInfo();  
+                    VersionInfo v = new VersionInfo();
 
                     // Setto i parametri per la versione
                     v.LastModTime = DateTime.Parse(version.Attribute(XmlManager.FileAttributeLastModTime).Value);
                     v.FileSize = Convert.ToInt64(version.Attribute(XmlManager.FileAttributeSize).Value);
                     v.Md5 = version.Attribute(XmlManager.FileAttributeChecksum).Value;
+                    v.versionID = Convert.ToInt32(version.Attribute(XmlManager.FileAttributeVersion).Value);
 
                     // Aggiungo alla lista 
                     versionList.Add(v);
@@ -717,21 +774,167 @@ namespace Client
                 // Aggiungo alla mappa
                 remoteVersionMap.Add(filePath, versionList);
 
-                ret.Items.Add(fileName);
+                TreeViewItem newItem = new TreeViewItem()
+                {
+                    Header = fileName,
+                    Tag = filePath,
+
+                };
+
+
+                ret.Items.Add(newItem);
             }
 
+            ret.Tag = path;
             return ret;
         }
 
+
+        private void TRWGeneral_SelectedItemChanged(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                // Cancello la lista delle versioni
+                LSTFileVersion.Items.Clear();
+
+                // Prendo l'oggetto selezionato
+                TreeViewItem item = ((TreeViewItem)TRWRestore.SelectedItem);
+
+                // Nel tag dell'oggetto avrò il suo percorso
+                string fileRelPath = item.Tag.ToString();
+                Logger.Debug("TRWGeneral selezionato: " + fileRelPath);
+
+                // Controllo di avere qualche informazione
+                if (remoteVersionMap.ContainsKey(fileRelPath) == true)
+                {
+                    // Prendo la lista dei contenitori delle informazioni
+                    List<VersionInfo> versionList = remoteVersionMap[fileRelPath];
+                    foreach (VersionInfo fileVersion in versionList)
+                    {
+
+                        ListBoxItem lstVersionItem = new ListBoxItem()
+                        {
+                            Content = "Versione " + fileVersion.versionID.ToString(),
+                            Tag = fileVersion
+                        };
+                        LSTFileVersion.Items.Add(lstVersionItem);
+                    }
+
+                    // Carico le informazioni nelle label
+                    VersionInfo info = XMLInstance.GetVersionInfo(fileRelPath);
+                    if (info != null)
+                    {
+                        LBLLocalDateValue.Content = info.LastModTime.ToString(Constants.XmlDateFormat);
+                        LBLLocalSizeValue.Content = Utilis.NormalizeSize(info.FileSize);
+                    }
+                    else
+                    {
+                        // se null può darsi che il file l'abbia cancellato
+                        LBLLocalDateValue.Content = "";
+                        LBLLocalSizeValue.Content = "";
+                    }
+                }
+                else
+                {
+                    // Ho selezionato una cartella
+                    LBLLocalDateValue.Content = "";
+                    LBLLocalSizeValue.Content = "";
+                    LBLRemoteDateValue.Content = "";
+                    LBLRemoteSizeValue.Content = "";
+                }
+
+            }
+            catch (Exception ex)
+            {
+                StackTrace st = new StackTrace(ex, true);
+                StackFrame sf = Utilis.GetFirstValidFrame(st);
+
+                Logger.Error("[" + Path.GetFileName(sf.GetFileName()) + "(" + sf.GetFileLineNumber() + ")]: " + ex.Message);
+            }
+
+        }
+
+        private void LSTFileVersion_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            try
+            {
+                ListBoxItem selectedVersionItem = ((ListBoxItem)LSTFileVersion.SelectedItem);
+                if (selectedVersionItem == null)
+                {
+                    LSTFileVersion.UnselectAll();
+                    return;
+                }
+                VersionInfo info = ((VersionInfo)selectedVersionItem.Tag);
+
+                // Carico le informazioni nelle label
+                LBLRemoteDateValue.Content = info.LastModTime.ToString(Constants.XmlDateFormat);
+                LBLRemoteSizeValue.Content = Utilis.NormalizeSize(info.FileSize);
+            }
+            catch (Exception ex)
+            {
+                StackTrace st = new StackTrace(ex, true);
+                StackFrame sf = Utilis.GetFirstValidFrame(st);
+
+                Logger.Error("[" + Path.GetFileName(sf.GetFileName()) + "(" + sf.GetFileLineNumber() + ")]: " + ex.Message);
+            }
+        }
+
+        private void BTNRestore_Click(object sender, RoutedEventArgs e)
+        {
+
+        }
         #endregion
 
-        private void TRWGeneral_SelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
+        #region SYNCH
+        private void BtnStartSynch_Click(object sender, RoutedEventArgs e)
         {
-            string selectedItem = TRWRestore.SelectedItem.ToString();
-            Logger.Info("SELEZIOUTNATO: " + TRWRestore.SelectedItem.ToString() );
+            Synch();
         }
+
+        /// <summary>
+        /// Wrapper per la sincronizzazione
+        /// </summary>
+        private void Synch()
+        {
+            try
+            {
+                client.ClientSync(XMLInstance, authToken);
+                deletedFilesList.Clear();
+            }
+            catch (Exception ex)
+            {
+                System.Windows.MessageBox.Show(ex.Message, "Errore synch", MessageBoxButton.OK, MessageBoxImage.Error);
+
+                StackTrace st = new StackTrace(ex, true);
+                StackFrame sf = Utilis.GetFirstValidFrame(st);
+
+                Logger.Error("[" + Path.GetFileName(sf.GetFileName()) + "(" + sf.GetFileLineNumber() + ")]: " + ex.Message);
+            }
+        }
+
+
+
+        #endregion
+
 
     }
 
+    public class VersionInfo
+    {
+        public string Md5;
+        public DateTime LastModTime;
+        public long FileSize;
+        public int versionID;
+    }
+
+
+    public enum TabIndexEnum : int
+    {
+        Login,
+        Registration,
+        Main,
+        Restore,
+        Settings
+    }
 
 }

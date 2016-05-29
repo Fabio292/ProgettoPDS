@@ -22,12 +22,8 @@ namespace Server
         /// <summary>
         /// Dimensione totale del header
         /// </summary>
-        public const int HeaderSize = CommandLengthBytes + CommandTypeBytes;
+        public const int HeaderSize = CommandLengthBytes + CommandTypeBytes + AuthTokenLength;
 
-        /// <summary>
-        /// Percorso di test
-        /// </summary>
-        public const string PathClient = @"D:\PDSCartellaPDS\ClientSide";
 
         /// <summary>
         /// Percorso di test
@@ -49,11 +45,7 @@ namespace Server
         /// Formato della stringa della data nell'xml
         /// </summary>
         public const string XmlDateFormat = @"yyyy'-'MM'-'dd'T'HH':'mm':'ss";
-
-        /// <summary>
-        /// Tempo di refresh per la tree view in ms
-        /// </summary>
-        public const int TreeViewRefreshTimerInterval = 1000;
+        
 
         /// <summary>
         /// Separatore tra elementi di percorso es. C:\Users\Fabio\Desktop\TEST
@@ -104,6 +96,11 @@ namespace Server
         /// AuthToken del server, per la mutua autenticazione
         /// </summary>
         public const string ServerAuthToken = "AK3Y8TPZE9XT";
+
+        /// <summary>
+        /// Lunghezza della stringa generata a random per la ricezione file
+        /// </summary>
+        public const int RNDNameLength = 10;
     }
 
     /// <summary>

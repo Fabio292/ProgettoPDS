@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Xml.Linq;
@@ -19,9 +20,9 @@ namespace Client
         public static readonly string FileAttributeLastModTime = "modTime";
         public static readonly string FileAttributeSize = "dim";
         public static readonly string FileAttributeChecksum = "md5";
-        
+        public static readonly string FileAttributeVersion = "id";
         #endregion
-        
+
         private XDocument _xmlDoc;
 
         /// <summary>
@@ -76,8 +77,7 @@ namespace Client
             string newName = newRelPath.Split(Constants.PathSeparator.ToCharArray(), StringSplitOptions.RemoveEmptyEntries).Last();
 
             XElement dirElement = this.getDirectoryElement(oldRelPath);
-
-            Logger.log("vado a rinominare " + dirElement.Attribute(DirectoryAttributeName));
+            
             // Modifico il nome dell'attributo
             dirElement.Attribute(DirectoryAttributeName).Value = newName;
         }
@@ -93,8 +93,7 @@ namespace Client
             string newName = newRelPath.Split(Constants.PathSeparator.ToCharArray(), StringSplitOptions.RemoveEmptyEntries).Last();
 
             XElement fileElement = this.getFileElement(oldRelPath);
-
-            Logger.log("vado a rinominare " + fileElement.Attribute(FileAttributeName));
+            
             // Modifico il nome dell'attributo
             fileElement.Attribute(FileAttributeName).Value = newName;
         }
@@ -127,17 +126,25 @@ namespace Client
         }
         
         /// <summary>
-        /// Cancello una directory dall'albero (e gli eventuali sottoelementi)
+        /// Cancello una directory dall'albero (e gli eventuali sottoelementi). Ritorno true se era file, false se era directory
         /// </summary>
         /// <param name="absPath">Percorso assoluto della directory cancellata</param>
-        public void DeleteElement(string absPath)
+        public void DeleteElement(string absPath, List<string> deletedFiles)
         {
             string path = Utilis.AbsToRelativePath(absPath, Settings.SynchPath);
             XElement el = this.getDirectoryElement(path);
 
             // Controllo se ho effettivamente trovato l'elemento, se è null allora significa che è un file
             if (el == null)
+            {
                 el = this.getFileElement(path);
+                deletedFiles.Add(path);
+            }
+            else
+            {
+                // Richiamo sulla cartella
+                searchFileRecursive(el, path, deletedFiles);
+            }
 
             el.Remove();
         }
@@ -223,6 +230,64 @@ namespace Client
             return ret;
         }
 
+        /// <summary>
+        /// Cerco nell'elemento passato tutti i file e li aggiungo alla lista
+        /// </summary>
+        /// <param name="e">Elemento directory</param>
+        /// <param name="path">Percorso parziale</param>
+        /// <param name="deletedFiles">Lista file cancellati</param>
+        private void searchFileRecursive(XElement e, string path, List<string> deletedFiles)
+        {
+            // Sottocartelle sulle quali ricorrere
+            var subDirs = e.Elements(DirectoryElementName);
+
+            foreach (var subdir in subDirs)
+            {
+                // Nuovo percorso
+                string np = path + Constants.PathSeparator + subdir.Attribute(XmlManager.DirectoryAttributeName).Value;
+
+                // Ricorro sulle sottocartelle
+                searchFileRecursive(subdir, np, deletedFiles);
+            }
+
+            // Trovo i file presenti in questa cartella
+            var subFiles = e.Elements(FileElementName);
+
+            foreach (var file in subFiles)
+            {
+                // Li aggiungo alla lista
+                deletedFiles.Add(path + Constants.PathSeparator + file.Attribute(XmlManager.FileAttributeName).Value);
+            }
+            
+            
+        }
+
+        /// <summary>
+        /// Cerco l'elemento relativo al file passato e ritorno una struttura con le informazioni
+        /// </summary>
+        /// <param name="relPath"></param>
+        /// <returns></returns>
+        public VersionInfo GetVersionInfo(string relPath)
+        {
+            VersionInfo ret = null;
+
+            XElement fileE = this.getFileElement(relPath);
+
+            if(fileE != null)
+            {
+
+                ret = new VersionInfo()
+                {
+                    FileSize = Convert.ToInt64(fileE.Attribute(FileAttributeSize).Value),
+                    LastModTime = DateTime.Parse(fileE.Attribute(FileAttributeLastModTime).Value),
+                    versionID = 0, // Non ho la versione nell'xml locale
+                    Md5 = fileE.Attribute(FileAttributeChecksum).Value
+                };
+
+            }
+
+            return ret;
+        }
         #endregion
 
         #region CONFRONTO XML
