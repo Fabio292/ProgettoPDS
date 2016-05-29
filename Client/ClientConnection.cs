@@ -135,7 +135,7 @@ namespace Client
             }
             catch (Exception ex)
             {
-                System.Windows.MessageBox.Show(ex.Message, "Errore Registrazione", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show(ex.Message, "Errore Registrazione", MessageBoxButton.OK, MessageBoxImage.Error);
 
                 StackTrace st = new StackTrace(ex, true);
                 StackFrame sf = Utilis.GetFirstValidFrame(st);
@@ -398,6 +398,7 @@ namespace Client
                 //TODO cancellare il file precedente
                 Utilis.GetFile(conn, Utilis.RelativeToAbsPath(entry.Key, Settings.SynchPath), entry.Value.FileSize);
                 //TODO modificare la data di ultima modifica del file
+
                 Logger.Debug("Ho ricevuto il file: " + entry.Key);
             }
             #endregion

@@ -64,10 +64,10 @@ namespace Client
 
             MyNotifyIcon.Visible = true;
 
-            foreach (TabItem item in TABControl.Items)
-            {
-                item.Visibility = Visibility.Collapsed;
-            }
+            //foreach (TabItem item in TABControl.Items)
+            //{
+            //    item.Visibility = Visibility.Collapsed;
+            //}
 
             //((TabItem)TABControl.Items.GetItemAt(0)).Visibility = Visibility.Collapsed;
             //((TabItem)TABControl.Items.GetItemAt(1)).Visibility = Visibility.Collapsed;

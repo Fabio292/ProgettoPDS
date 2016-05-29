@@ -639,7 +639,7 @@ namespace Server
                 Command request = Utilis.GetCmdSync(client);
                 if (request.kmd != CmdType.fileName) {
                     Logger.Error("Il comando ricevuto non è corretto, atteso <filename>, ricevuto: <" + request.kmd + ">");
-                    return;
+                    return; //TODO notificare l'errore all'utente
                 }
 
                 string requestedFile = String.Copy(request.Payload);
@@ -655,7 +655,7 @@ namespace Server
                         if (reader.HasRows == false)
                         {
                             Logger.Error("Il file richiesto non è esistente: " + reader.GetString(0));
-                            return;
+                            return; //TODO notificare l'errore all'utente
                         }
 
                         Utilis.SendFile(client, reader.GetString(0), Convert.ToInt64(reader.GetString(1)));

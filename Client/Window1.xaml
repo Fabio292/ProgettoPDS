@@ -6,7 +6,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:Client"
         mc:Ignorable="d"
-        Title="Varmuskoopio" MinHeight="470" MinWidth="620" Height="470" Width="620" ResizeMode="CanResize" Closing="Window_Closing" Loaded="Window_Loaded" Background="#B25F9EA0">
+        Title="Varmuskoopio" MinHeight="470" MinWidth="620" Height="470" Width="620" ResizeMode="CanResize" Closing="Window_Closing" Loaded="Window_Loaded">
 
 
     <DockPanel LastChildFill="True">
@@ -44,7 +44,7 @@
         <TabControl x:Name="TABControl" Margin="0,-2,0,0"  HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" VerticalAlignment="Stretch" BorderThickness="0" Grid.ColumnSpan="3">
 
             <TabItem Header="Login">
-                <Grid Background="#B25F9EA0">
+                <Grid Background="#FFBCE5F3">
 
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="25*" />
@@ -94,7 +94,8 @@
 
                     <Button x:Name="BTNLogin" Content="Login" Grid.Column="1" Grid.Row="3" HorizontalAlignment="Center" Margin="80,30,80,0" FontWeight="Bold"  MinHeight="50" Width="100" VerticalAlignment="Top" Background="AliceBlue"  Click="BTNLogin_Clicked"/>
 
-                    <Label Height="26" Margin="0,106,183,0" Name="link_a_registrazione" Foreground="Black" VerticalAlignment="Top" Grid.Row="3" Grid.ColumnSpan="2" Grid.RowSpan="2">
+                    <Label Height="26" Margin="0" Name="link_a_registrazione" Foreground="Black" HorizontalAlignment="Left" VerticalAlignment="Bottom" 
+                           Grid.Row="4" Grid.Column="0" Grid.ColumnSpan="2">
                         <Hyperlink Click="AddAccount" Foreground="Black" FontWeight="Bold">Non possiedi un account? Registrati</Hyperlink>
                     </Label>
                 
@@ -102,7 +103,7 @@
             </TabItem>
 
             <TabItem Header="Registrazione">
-                <Grid Background="#B25F9EA0">
+                <Grid Background="#FFBCE5F3">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="25*" />
                         <ColumnDefinition Width="40*" />
@@ -170,9 +171,7 @@
             </TabItem>
 
             <TabItem Header="Main">
-                <DockPanel Background="#B25F9EA0" >
-
-
+                <DockPanel Background="#FFBCE5F3" >
 
                     <Grid>
                         <Grid.ColumnDefinitions>
@@ -207,7 +206,7 @@
             </TabItem>
 
             <TabItem Header="Storico">
-                <Grid Background="#B25F9EA0">
+                <Grid Background="#FFBCE5F3">
 
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="30*" />
@@ -311,7 +310,7 @@
 
             <TabItem Header="Impostazioni">
 
-                <Grid Background="#B25F9EA0">
+                <Grid Background="#FFBCE5F3">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="20" />
                         <ColumnDefinition Width="*" />
