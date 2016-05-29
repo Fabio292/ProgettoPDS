@@ -225,6 +225,7 @@ namespace Client
 
         #endregion
 
+
         #region CONFRONTO XML
         /// <summary>
         /// controlla due XML rendendo l'elenco dei files che sono stati aggiunti/modificati
@@ -234,7 +235,8 @@ namespace Client
         /// <param name="rs">XElement del server </param>
         /// <param name="res">stringa (inizializzata vuota) che memorizza l'elenco dei path dei file diversi</param>
         /// <param name="path">stringa per memorizzare il path di ciascun file differente</param>
-        public static int checkDiff(XElement rc, XElement rs, List<String> refList, ref string res, string path)
+        /// <param name="mode"> modalità di utilizzo della funzione: 0 sinvio files client -> server, 1 invio files server -> client</param> >
+        public static int checkDiff(XElement rc, XElement rs, List<String> refList, ref string res, string path, Dictionary<String, VersionInfo> refMap, int mode)
         {
             int counter = 0;
             bool presente = false;
@@ -265,9 +267,9 @@ namespace Client
                     if (e.Attribute("name").ToString().CompareTo(eS.Attribute("name").ToString()) == 0)
                     {
                         //nome presente
-                        if (e.Attribute("md5").ToString().CompareTo(eS.Attribute("md5").ToString()) == 0)
+                        if ((e.Attribute("md5").ToString().CompareTo(eS.Attribute("md5").ToString()) == 0) && (e.Attribute("modTime").ToString().CompareTo(eS.Attribute("modTime").ToString()) == 0))
                         {
-                            //file identico in nome e in checksum
+                            //file identico in nome, in checksum e in data di ultima modifica
                             uguali = true;
                         }
                         presente = true;
@@ -276,15 +278,41 @@ namespace Client
 
                 if (presente == false)
                 {
+                    //file nuovo
                     counter++;
                     res += "PUSH" + path + "\\" + e.Attribute("name").Value + "\n";
-                    refList.Add(path + "\\" + e.Attribute("name").Value);
+                    if (mode == 0)
+                    {
+                        refList.Add(path + "\\" + e.Attribute("name").Value);
+                    }
+                    else if (mode == 1)
+                    {
+                        VersionInfo infos = new VersionInfo();
+                        infos.LastModTime = Convert.ToDateTime(e.Attribute("modTime").Value);
+                        infos.FileSize = Convert.ToInt32(e.Attribute("dim").Value);
+                        infos.Md5 = e.Attribute("md5").Value;
+                        refMap.Add(path + "\\" + e.Attribute("name").Value, infos);
+                    }
+                    
+
                 }
                 else if (uguali == false)
                 {
+                    //file modificato
                     counter++;
                     res += "PUSH* " + path + "\\" + e.Attribute("name").Value + "\n";
-                    refList.Add(path + "\\" + e.Attribute("name").Value);
+                    if (mode == 0)
+                    {
+                        refList.Add(path + "\\" + e.Attribute("name").Value);
+                    }
+                    else if (mode == 1)
+                    {
+                        VersionInfo infos = new VersionInfo();
+                        infos.LastModTime = Convert.ToDateTime(e.Attribute("modTime").Value);
+                        infos.FileSize = Convert.ToInt32(e.Attribute("dim").Value);
+                        infos.Md5 = e.Attribute("md5").Value;
+                        refMap.Add(path + "\\" + e.Attribute("name").Value, infos);
+                    }
                 }
             }
 
@@ -298,7 +326,7 @@ namespace Client
                     {
                         //cartella esistente, ricorro
                         cartellaesistente = true;
-                        counter += checkDiff(cc, cs, refList, ref res, path + "\\" + cc.Attribute("name").Value);
+                        counter += checkDiff(cc, cs, refList, ref res, path + "\\" + cc.Attribute("name").Value, refMap, mode);
                     }
                 }
                 if (cartellaesistente == false)
@@ -307,7 +335,7 @@ namespace Client
                     //res += ("cartella NUOVA " + path + "\\" + cc.Attribute("name").Value + "\n");
 
                     //TO DO cercare una funzione che renda il path completo dato un XElement, metterla come stringa di partenza al posto di path
-                    counter += getSubdirs(cc, refList, ref res, path + "\\" + cc.Attribute("name").Value);
+                    counter += getSubdirs(cc, refList, ref res, path + "\\" + cc.Attribute("name").Value, refMap, mode);
                 }
             }
 
@@ -321,7 +349,7 @@ namespace Client
         /// <param name="root">XElement cartella interessata</param>
         /// <param name="subElements">stringa che memorizza l'elenco dei path dei file diversi</param>
         /// <param name="path">path temporaneo</param>
-        public static int getSubdirs(XElement root, List<String> refList, ref string subElements, string path)
+        public static int getSubdirs(XElement root, List<String> refList, ref string subElements, string path, Dictionary<String, VersionInfo> refMap, int mode)
         {
             int counter = 0;
             var files = from f in root.Elements(FileElementName)
@@ -331,21 +359,33 @@ namespace Client
 
             foreach (XElement e in files)
             {
-                subElements += "PUSH" + path + "\\" + e.Attribute("name").Value + "\n";
-                refList.Add(path + "\\" + e.Attribute("name").Value);
                 counter++;
+                subElements += "PUSH" + path + "\\" + e.Attribute("name").Value + "\n";
+                if (mode == 0)
+                {
+                    refList.Add(path + "\\" + e.Attribute("name").Value);
+                }
+                else if (mode == 1)
+                {
+                    VersionInfo infos = new VersionInfo();
+                    infos.LastModTime = Convert.ToDateTime(e.Attribute("modTime").Value);
+                    infos.FileSize = Convert.ToInt32(e.Attribute("dim").Value);
+                    infos.Md5 = e.Attribute("md5").Value;
+                    refMap.Add(path + "\\" + e.Attribute("name").Value, infos);
+                }
+
             }
             foreach (XElement e in dirs)
             {
                 //subElements += path + "\\" + e.Attribute("name").Value + "\n";
-                counter += getSubdirs(e, refList, ref subElements, path + "\\" + e.Attribute("name").Value);
+                counter += getSubdirs(e, refList, ref subElements, path + "\\" + e.Attribute("name").Value, refMap, mode);
             }
 
             return counter;
         }
         #endregion
 
-
+       
         /// <summary>
         /// Ritorna l'md5 dell'XML NORMALIZZATO</summary>
         public string XMLDigest()

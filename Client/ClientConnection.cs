@@ -217,7 +217,6 @@ namespace Client
             return ret;
         }
 
-
         /// <summary>
         /// analizza le differenze presenti tra la cartella lato client e quella lato server
         /// invia i files nuovi/modificati
@@ -227,6 +226,7 @@ namespace Client
             XElement xmlRootServer;
             XElement xmlRootClient;
             List<String> refList = new List<String>();
+            Dictionary<String, VersionInfo> refMap = new Dictionary<string, VersionInfo>();
             
             string r = "";
             string path = "";
@@ -246,7 +246,7 @@ namespace Client
                 if (String.Compare(md5XmlCLient, md5XmlServer) == 0)
                 {
                     //TODO resetto il timer
-                    Logger.Info("Le due cartelle sono perfettamente uguali, non e necessario nessun aggiornamento");
+                    Logger.Info("Le due cartelle sono perfettamente uguali, non e' necessario nessun aggiornamento");
                     this.sendLogout();
                 }
                 else
@@ -255,8 +255,32 @@ namespace Client
                     xmlRootClient = xmlClient.GetRoot();
                     xmlRootServer = XmlManager.GetRoot(getLastXml(authToken));
 
+                    #region SYNC SERVER -> CLIENT
+                    //fase A: il client guarda se il server abbia dei files aggiornati o nuovi
+                    //li memorizza in una lista e li richiede al server
+                    int elementsNumber = XmlManager.checkDiff(xmlRootServer, xmlRootClient, refList, ref r, path, refMap, 1);
+                    Logger.Info("l'elenco comandi inviati al server e': \n" + r);
+                    Logger.Info("il numero di elementi da inviare al server e': " + elementsNumber);
+                    if (elementsNumber != 0)
+                    {
+                        getFilesModifiedFromServer(elementsNumber, refMap, authToken);
+                    }
+                        
+                    #endregion
+
+                    //pulizia variabili
+                    r = "";
+                    path = "";
+                    elementsNumber = 0;
+                    refList.Clear();
+                    refMap.Clear();
+
+
+                    #region SYNC CLIENT -> SERVER
+                    //fase B: il client seleziona i files non memorizzati dal server (nuovi o modificati)
+                    //li memorizza in una lista e li invia al server
                     //guardo le differenze tra i due XDocuments e popolo r delle stringhe di richiesta da inviare al server
-                    int elementsNumber = XmlManager.checkDiff(xmlRootClient, xmlRootServer, refList, ref r, path);
+                    elementsNumber = XmlManager.checkDiff(xmlRootClient, xmlRootServer, refList, ref r, path, refMap, 0);
                     Logger.Info("l'elenco comandi inviati al server e': \n" + r);
                     Logger.Info("il numero di elementi da inviare al server e': " + elementsNumber);
 
@@ -267,6 +291,7 @@ namespace Client
                     }
                     else
                         updateDirectory(xmlClient, elementsNumber, refList, authToken);
+                    #endregion
 
                 }
             }
@@ -308,7 +333,6 @@ namespace Client
             Logger.Info("Avvio la procedura di invio file al server. " + elementi + " file");
             
             #region Invio file
-            //testare che la dimensione inviata sia corretta
             foreach (string filePath in refString)
             {
                 // Invio le informazioni sul file
@@ -343,6 +367,48 @@ namespace Client
         }
 
 
+        /// <summary>
+        /// scarica dal server i files modificati
+        /// </summary>
+        private void getFilesModifiedFromServer(int elementi, Dictionary<String, VersionInfo> refMap, string authToken) {
+            #region Preparazione synch
+            // Devo inviare la lista, apro la synch
+            Command cmd = new Command(CmdType.startSynch);
+            Utilis.SendCmdSync(conn, cmd);
+
+            // Ricevo la risposta del server
+            Command resp = Utilis.GetCmdSync(conn);
+            if (resp == null || resp.kmd != CmdType.ok)
+            {
+                Logger.Error("errore inizio synch");
+                return;
+            }
+
+            //invio il numero di files che il client richiede al server
+            FileNumCommand numFiles = new FileNumCommand(elementi, authToken);
+            Utilis.SendCmdSync(conn, numFiles);
+            #endregion
+
+            #region sincronizzazione files
+            foreach (KeyValuePair<string, VersionInfo> entry in refMap)
+            {
+                // Invio le informazioni sul file
+                Command requestedFile = new Command(CmdType.fileName, entry.Key);
+                Utilis.SendCmdSync(conn, requestedFile);
+                Logger.Info("Ho inviato la richiesta del file " + requestedFile.Payload);
+
+                Utilis.GetFile(conn, entry.Key, entry.Value.FileSize);
+                Logger.Info("Ho ricevuto il file: " + entry.Key);
+            }
+            #endregion
+            Logger.Info("Ho finito di scaricare dal server i files mancanti");
+        }
+
+        
+        
+        
+        
+        
         /// <summary>
         /// Ritorna l'md5 dell'XML dell'ultima versione posseduta dal server
         /// </summary>

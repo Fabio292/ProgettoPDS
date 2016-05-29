@@ -132,7 +132,8 @@ namespace Client
         sendFile,
         startSynch,
         endSynch,
-        infoNum,        
+        infoNum, 
+        fileName,       
         #endregion
 
         #region COMANDI GENERICI
