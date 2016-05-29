@@ -307,11 +307,6 @@ namespace Client
         {
             try
             {
-                //if(e.FullPath.Contains("fileperms.db") == true)
-                //{
-                //    Logger.Debug("bingo");
-                //}
-
                 if (e.ChangeType == WatcherChangeTypes.Changed)
                 {
                     // IGNORO le notifiche di tipo change su directory

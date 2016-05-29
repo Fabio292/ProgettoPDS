@@ -236,7 +236,6 @@ namespace Client
                 // Mi connetto al server
                 this.connect();
 
-
                 // Calcolo l'md5 del mio ultimo xml
                 string md5XmlCLient = xmlClient.XMLDigest();
                 string md5XmlServer = getXmlDigest(authToken); // Scarico il digest dal server
@@ -251,9 +250,26 @@ namespace Client
                 }
                 else
                 {
-                    //le due cartelle sono diverse
+                    //le due cartelle sono diverse apro la synch
                     xmlRootClient = xmlClient.GetRoot();
                     xmlRootServer = XmlManager.GetRoot(getLastXml(authToken));
+
+                    #region Apro la synch
+                    Command cmd = new Command(CmdType.startSynch);
+                    Utilis.SendCmdSync(conn, cmd);
+
+                    // Ricevo la risposta del server
+                    Command resp = Utilis.GetCmdSync(conn);
+                    if (resp == null || resp.kmd != CmdType.ok)
+                    {
+                        Logger.Error("errore inizio synch");
+                        return;
+                    }
+                    #endregion
+
+                    #region DELETED FILES
+
+                    #endregion
 
                     #region SYNC SERVER -> CLIENT
                     //fase A: il client guarda se il server abbia dei files aggiornati o nuovi
@@ -293,6 +309,24 @@ namespace Client
                         updateDirectory(xmlClient, elementsNumber, refList, authToken);
                     #endregion
 
+                    #region Chiusura synch
+                    // Chiudo la sessione di sincronizzazione
+                    resp = Utilis.GetCmdSync(conn);
+                    if (resp == null || resp.kmd != CmdType.ok)
+                    {
+                        Logger.Error("errore fine synch");
+                        return;
+                    }
+
+                    // Mando l'xml
+                    //XmlCommand lastXml = new XmlCommand(xmlClient, authToken);
+                    //Utilis.SendCmdSync(conn, lastXml);
+
+                    Command end = new Command(CmdType.endSynch);
+                    Utilis.SendCmdSync(conn, end);
+                    Logger.Info("Synch terminata");
+                    #endregion
+
                 }
             }
             catch (Exception e)
@@ -314,17 +348,7 @@ namespace Client
         private void updateDirectory(XmlManager xmlClient, int elementi, List<String> refString, string authToken)
         {
             #region Preparazione synch
-            // Devo inviare degli aggiornamenti, apro la synch
-            Command cmd = new Command(CmdType.startSynch);
-            Utilis.SendCmdSync(conn, cmd);
 
-            // Ricevo la risposta del server
-            Command resp = Utilis.GetCmdSync(conn);
-            if (resp == null || resp.kmd != CmdType.ok)
-            {
-                Logger.Error("errore inizio synch");
-                return;
-            }
 
             //invio il numero di files che il server deve aspettarsi
             FileNumCommand numFiles = new FileNumCommand(elementi, authToken);
@@ -346,24 +370,6 @@ namespace Client
             #endregion
 
             Logger.Info("File inviati al server");
-
-            #region Chiusura synch
-            // Chiudo la sessione di sincronizzazione
-            resp = Utilis.GetCmdSync(conn);
-            if (resp == null || resp.kmd != CmdType.ok)
-            {
-                Logger.Error("errore fine synch");
-                return;
-            }
-
-            // Mando l'xml
-            //XmlCommand lastXml = new XmlCommand(xmlClient, authToken);
-            //Utilis.SendCmdSync(conn, lastXml);
-
-            Command end = new Command(CmdType.endSynch);
-            Utilis.SendCmdSync(conn, end);
-            Logger.Info("Synch terminata");
-            #endregion
             
         }
 
@@ -371,20 +377,10 @@ namespace Client
         /// <summary>
         /// scarica dal server i files modificati
         /// </summary>
-        private void getFilesModifiedFromServer(int elementi, Dictionary<String, VersionInfo> refMap, string authToken) {
+        private void getFilesModifiedFromServer(int elementi, Dictionary<String, VersionInfo> refMap, string authToken)
+        {
+            
             #region Preparazione synch
-            // Devo inviare la lista, apro la synch
-            Command cmd = new Command(CmdType.startSynch);
-            Utilis.SendCmdSync(conn, cmd);
-
-            // Ricevo la risposta del server
-            Command resp = Utilis.GetCmdSync(conn);
-            if (resp == null || resp.kmd != CmdType.ok)
-            {
-                Logger.Error("errore inizio synch");
-                return
-            }
-
             //invio il numero di files che il client richiede al server
             FileNumCommand numFiles = new FileNumCommand(elementi, authToken);
             Utilis.SendCmdSync(conn, numFiles);

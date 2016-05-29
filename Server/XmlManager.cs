@@ -86,13 +86,7 @@ namespace Server
 
                         string fname = Path.GetFileName(relPath);
                         string[] dirPath = Path.GetDirectoryName(relPath).Split(Constants.PathSeparator.ToCharArray(), StringSplitOptions.RemoveEmptyEntries);
-
-                        //var msg = "";
-                        //foreach (var item in dirPath)
-                        //{
-                        //    msg += item + "    -    ";
-                        //}
-                        //Logger.Info("\n" + relPath + "\n" + fname + "\n" + msg);
+                        
 
                         // Cerco la dir in cui va il file e se non c'e la creo
                         XElement dir = this.getDirectoryElement(Path.GetDirectoryName(relPath), root);

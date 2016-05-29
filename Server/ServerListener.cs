@@ -178,48 +178,10 @@ namespace Server
                             ServerListener.sendOk(client, userAuthtoken);
                             exitFlag = true;
                             break;
-
-
-
-                        //case CmdType.getXmlDigest:
-                        //    ///invio l'md5 dell'XML dell'ultima versione della cartella
-                        //    ServerListener.sendXmlDigest(client, userID);
-                        //    Logger.Info("ho inviato l'md5 dell'Xml richiesto:");
-                        //    break;
-
-
-                        //case CmdType.getXML:
-                        //    ///invio l'XML dell'ultima versione della cartella
-                        //    ServerListener.sendLastXml(client, userID);
-                        //    Logger.Info("ho inviato l'Xml richiesto");
-                        //    break;
-                            
+                                                        
 
                         case CmdType.getXmlDigest:
                             ServerListener.clientSynch(client, k.AuthToken);
-
-                            //// Controllo se ho effettivamente iniziato la sincronizzazione
-                            //if (conn == null || transaction == null)
-                            //{
-                            //    ServerListener.sendError(client, ErrorCode.userAlreadyInSynch);
-                            //    Logger.Error("L'utente " + userID + " e' gia in synch");
-
-                            //    if (transaction != null)
-                            //    {
-                            //        transaction.Rollback();
-                            //        transaction.Dispose();
-                            //        transaction = null;
-                            //    }
-
-                            //    if (conn != null)
-                            //    {
-                            //        conn.Close();
-                            //        conn.Dispose();
-                            //        conn = null;
-                            //    }                              
-
-                            //    exitFlag = true;
-                            //}
                             exitFlag = true;
                             break;
                             
@@ -241,32 +203,9 @@ namespace Server
 
                 Logger.Error("[" + Path.GetFileName(sf.GetFileName()) + "(" + sf.GetFileLineNumber() + ")]: " + e.Message);
 
-                // eventualmente chiudo la transaction con un rollback se necessario e la connessione
-                //if (transaction != null)
-                //{
-                //    transaction.Rollback();
-                //    transaction.Dispose();
-                //    transaction = null;
-                //}
-                //if (conn != null)
-                //{
-                //    conn.Close();
-                //    conn.Dispose();
-                //    conn = null;
-                //}              
-
             }
             finally
             {
-                //if (transaction != null)
-                //{
-                //    Logger.Error("AAAAAAAAAAAAAA ERRORE GRAVISSIMO transazione non nulla nel finally");
-                //}
-                //if (conn != null)
-                //{
-                //    Logger.Error("AAAAAAAAAAAAAA ERRORE GRAVISSIMO connessione non nulla nel finally");
-                //}
-
                 client.Close();
             }
 
@@ -569,6 +508,7 @@ namespace Server
             // Se arrivo a sto punto voglio trasmettere dei file
             ServerListener.sendOk(client);
 
+            #region CONTROLLO INSYNCH
             // Blocco l'utente
             using (SQLiteConnection connessione = new SQLiteConnection(DB.GetConnectionString()))
             {
@@ -614,7 +554,8 @@ namespace Server
                     #endregion
 
                 }
-            }            
+            }
+            #endregion
 
             using (SQLiteConnection connessione = new SQLiteConnection(DB.GetConnectionString()))
             {
@@ -622,11 +563,19 @@ namespace Server
 
                 using (SQLiteTransaction tr = connessione.BeginTransaction())
                 {
-                    // Ricevo le modifiche                
+                    //Ricevo elenco file cancellati
+
+
+
+                    //Invio file nuovi al client
+
+
+                    // Ricevo le modifiche dal client      
                     int lastVersionID = 0;
                     ServerListener.getUpdates(client, connessione, UID, ref lastVersionID);
-
                     Logger.Info("File ricevuti");
+
+                    
                     // Ho concluso le modifiche al DB
                     ServerListener.sendOk(client);
 
