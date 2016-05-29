@@ -136,6 +136,7 @@ namespace Server
         startSynch,
         endSynch,
         infoNum,
+        fileName,
         #endregion
 
         #region COMANDI GENERICI
