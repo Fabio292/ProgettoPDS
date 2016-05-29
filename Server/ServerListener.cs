@@ -566,10 +566,12 @@ namespace Server
 
 
                     //Invio file nuovi al client
+                    int lastVersionID = 0;
+                    ServerListener.sendFilesRequested(client, connessione, UID, ref lastVersionID);
 
 
                     // Ricevo le modifiche dal client      
-                    int lastVersionID = 0;
+                    lastVersionID = 0;
                     ServerListener.getUpdates(client, connessione, UID, ref lastVersionID);
                     Logger.Info("File ricevuti");
 
@@ -592,6 +594,78 @@ namespace Server
 
 
             }
+        }
+
+       
+        /// <summary>
+        /// invio i files al client su richiesta (prima fase di sincronizzazione)
+        /// </summary>
+        /// <param name="client"></param>
+        /// <param name="connection"></param>
+        /// <param name="UID"></param>
+        /// <param name="lastVersionID"></param>
+        private static void sendFilesRequested(TcpClient client, SQLiteConnection connection, int UID, ref int lastVersionID)
+        {
+            //TODO riguardare che abbia senso
+            int numFiles = 0;
+            #region Recupero il versionID
+            // Cerco nel DB l'ultimo numero di versione per l'utente
+            using (SQLiteCommand sqlCmd = connection.CreateCommand())
+            {
+                sqlCmd.CommandText = @"SELECT MAX(VersionID) FROM Versioni WHERE UID = @_UID;";
+                sqlCmd.Parameters.AddWithValue("@_UID", UID);
+                try
+                {
+                    //la conversione fa partire un NULLPOINTEREXCEPTION se l'oggetto sqlCmd è null
+                    lastVersionID = Convert.ToInt32(sqlCmd.ExecuteScalar());
+                }
+                catch (Exception)
+                {
+                    // Prima synch
+                    lastVersionID = 0;
+                }
+
+            }
+            #endregion
+
+            FileNumCommand numeroFilesCmd = new FileNumCommand(Utilis.GetCmdSync(client));
+            numFiles = numeroFilesCmd.NumFiles;
+            Logger.Info("il numero di files che devo inviare al client e': " + numFiles);
+
+            #region ricezione richieste e invio files
+            for (int i = 0; i < numFiles; i++)
+            {
+                Command request = Utilis.GetCmdSync(client);
+                if (request.kmd != CmdType.fileName) {
+                    Logger.Error("Il comando ricevuto non è corretto, atteso <filename>, ricevuto: <" + request.kmd + ">");
+                    return;
+                }
+
+                string requestedFile = String.Copy(request.Payload);
+                using (SQLiteCommand sqlCmd = connection.CreateCommand())
+                {
+                    sqlCmd.CommandText = @"SELECT PathServer, Size FROM Versioni WHERE UID = @_UID AND VersionID = @_VID AND PathClient = @_pathClient;";
+                    sqlCmd.Parameters.AddWithValue("@_UID", UID);
+                    sqlCmd.Parameters.AddWithValue("@_VID", lastVersionID);
+                    sqlCmd.Parameters.AddWithValue("@_pathClient", requestedFile);
+
+                    using (SQLiteDataReader reader = sqlCmd.ExecuteReader())
+                    {
+                        if (reader.HasRows == false)
+                        {
+                            Logger.Error("Il file richiesto non è esistente: " + reader.GetString(0));
+                            return;
+                        }
+
+                        Utilis.SendFile(client, reader.GetString(0), Convert.ToInt64(reader.GetString(1)));
+
+                    }
+
+                }
+
+            }
+
+            #endregion
         }
 
 
