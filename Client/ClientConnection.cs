@@ -381,7 +381,7 @@ namespace Client
             if (resp == null || resp.kmd != CmdType.ok)
             {
                 Logger.Error("errore inizio synch");
-                return;
+                return
             }
 
             //invio il numero di files che il client richiede al server
@@ -396,8 +396,9 @@ namespace Client
                 Command requestedFile = new Command(CmdType.fileName, entry.Key);
                 Utilis.SendCmdSync(conn, requestedFile);
                 Logger.Info("Ho inviato la richiesta del file " + requestedFile.Payload);
-
-                Utilis.GetFile(conn, entry.Key, entry.Value.FileSize);
+                //TODO cancellare il file precedente
+                Utilis.GetFile(conn, Utilis.RelativeToAbsPath(entry.Key, Settings.SynchPath), entry.Value.FileSize);
+                //TODO modificare la data di ultima modifica del file
                 Logger.Info("Ho ricevuto il file: " + entry.Key);
             }
             #endregion
