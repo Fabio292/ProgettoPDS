@@ -393,6 +393,7 @@ namespace Client
                 Command requestedFile = new Command(CmdType.fileName, entry.Key);
                 Utilis.SendCmdSync(conn, requestedFile);
                 Logger.Info("Ho inviato la richiesta del file " + requestedFile.Payload);
+
                 //TODO cancellare il file precedente
                 Utilis.GetFile(conn, Utilis.RelativeToAbsPath(entry.Key, Settings.SynchPath), entry.Value.FileSize);
                 //TODO modificare la data di ultima modifica del file

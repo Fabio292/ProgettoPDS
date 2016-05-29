@@ -167,7 +167,7 @@ namespace Client
             this.kmd = type;
 
             // Controllo la validità dei parametri in input
-            if ((username == null) || (username.Length < 1)) //TODO controllare che se username==null mi faccia saltare subito al throw
+            if ((username == null) || (username.Length < 1))
                 throw new ArgumentException("Username troppo corto");
             if ((password == null) || (password.Length < 1))
                 throw new ArgumentException("Password troppo corta");
@@ -207,7 +207,7 @@ namespace Client
             this.extractField(cmd.Payload);
 
             // Copio la stringa del Payload
-            this.Payload = cmd.Payload;   // TODO forse è meglio usare la generatePayload()? 
+            this.Payload = cmd.Payload;
         }
 
         /// <summary>
@@ -515,7 +515,7 @@ namespace Client
         public String Digest 
         {
             get { return Payload; }
-            set //TODO Privato?
+            private set
             {
                 this.Payload = value;
             }
@@ -563,8 +563,6 @@ namespace Client
         {
             if (payloadP.Length != Constants.MD5OutputLegth)
                 throw new Exception();
-
-            //TODO controllo la validità con una regex? ToUpper()[A-Z0-9]{md5Length}
 
             return payloadP;
         }
@@ -627,10 +625,6 @@ namespace Client
         /// </summary>
         private String extractField(string payloadP)
         {
-            //if (payloadP.Length != Constants.MD5OutputLegth)
-            //    throw new Exception();
-            //TODO Controllare una lunghezza minima (da stabilire per cartella vuota)
-
             return payloadP;
         }
 

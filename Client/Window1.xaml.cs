@@ -322,7 +322,6 @@ namespace Client
                 {
                     if (Utilis.IsDirectory(e.FullPath))
                     {
-                        //TODO Creazione nuova cartella
                         Logger.Info("Created DIR " + e.FullPath);
                         XMLInstance.CreateDirectory(e.FullPath);
                     }
@@ -484,7 +483,6 @@ namespace Client
             }
             catch (Exception ex)
             {
-                //TODO visualizzare all'utente?
                 System.Windows.MessageBox.Show(ex.Message, "Errore Login", MessageBoxButton.OK, MessageBoxImage.Error);
 
                 StackTrace st = new StackTrace(ex, true);
@@ -705,7 +703,7 @@ namespace Client
         {
             TABControl.SelectedIndex = 3;
 
-            // TODO faccio una Client.synch
+            ///TODO faccio una Client.synch
             ///TODO invio la richiesta al server -> XML con i dati della cartella (history)
             ///TODO il server risponde inviandomi l'XML
             if (!File.Exists(@"D:\PDSCartellaPDS\fileXML.xml"))
@@ -718,7 +716,7 @@ namespace Client
             remoteVersionMap.Clear();
 
             TreeViewItem trwRoot = xmlToTreeViewRestore(root, "");
-            trwRoot.Header = "Cartella Backup"; // TODO mettere il nome della cartella di synch del client
+            trwRoot.Header = "Cartella Backup";
 
             TRWRestore.Items.Add(trwRoot);
             ((TreeViewItem)TRWRestore.Items.GetItemAt(0)).IsExpanded = true;
@@ -752,7 +750,7 @@ namespace Client
                 string filePath = path + fileName;
 
                 // Ciclo sulle varie versioni
-                foreach (XElement version in fileElement.Elements("version")) // TODO spostare nelle costanti del xml
+                foreach (XElement version in fileElement.Elements(XmlManager.VersionElementName))
                 {
                     VersionInfo v = new VersionInfo();
 
@@ -760,7 +758,7 @@ namespace Client
                     v.LastModTime = DateTime.Parse(version.Attribute(XmlManager.FileAttributeLastModTime).Value);
                     v.FileSize = Convert.ToInt64(version.Attribute(XmlManager.FileAttributeSize).Value);
                     v.Md5 = version.Attribute(XmlManager.FileAttributeChecksum).Value;
-                    v.versionID = Convert.ToInt32(version.Attribute(XmlManager.FileAttributeVersion).Value);
+                    v.versionID = Convert.ToInt32(version.Attribute(XmlManager.VersionAttributeID).Value);
 
                     // Aggiungo alla lista 
                     versionList.Add(v);

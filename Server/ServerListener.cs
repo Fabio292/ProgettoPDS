@@ -137,9 +137,7 @@ namespace Server
         /// </summary>
         private void serveClientSync(TcpClient client, CancellationToken ct)
         {
-            //SQLiteConnection conn = null;
-            //SQLiteTransaction transaction = null;
-
+            
             //TODO spostare in configurazione
             client.ReceiveTimeout = 1000000;            
             

@@ -11,16 +11,17 @@ namespace Client
     class XmlManager
     {
         #region NOMI DEI CAMPI
-        // TODO: mettere per ogni valore il commento ///
         public static readonly string DirectoryElementName = "dir";
         public static readonly string DirectoryAttributeName = "name";
+
+        public static readonly string VersionElementName = "version";
+        public static readonly string VersionAttributeID = "id";
 
         public static readonly string FileElementName = "file";
         public static readonly string FileAttributeName = "name";
         public static readonly string FileAttributeLastModTime = "modTime";
         public static readonly string FileAttributeSize = "dim";
         public static readonly string FileAttributeChecksum = "md5";
-        public static readonly string FileAttributeVersion = "id";
         #endregion
 
         private XDocument _xmlDoc;

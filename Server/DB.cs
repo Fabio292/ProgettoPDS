@@ -48,7 +48,6 @@ namespace Server
             else
             {
                 // Se esiste invece, controllo la presenza di tutte le tabelle
-                // TODO completare
                 if (!(DB.TableExists("Utenti")) && !(DB.TableExists("Versioni")))
                 {
                     DB.ClearDB();

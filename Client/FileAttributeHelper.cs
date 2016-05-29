@@ -92,7 +92,6 @@ namespace Client
 
                 Logger.Error("[" + Path.GetFileName(sf.GetFileName()) + "(" + sf.GetFileLineNumber() + ")]: " + ex.Message);
 
-                // HACK per l'XML manager che vuole qualcosa in ogni caso
                 this._md5 = "";
                 this.md5Calculated = false;
             }
