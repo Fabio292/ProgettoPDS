@@ -6,7 +6,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:Client"
         mc:Ignorable="d"
-        Title="Varmuskoopio" MinHeight="500" MinWidth="680" Height="500" Width="680" ResizeMode="CanResize" Closing="Window_Closing" Loaded="Window_Loaded">
+        Title="SYNCHRO" MinHeight="500" MinWidth="680" Height="500" Width="680" ResizeMode="CanResize" Closing="Window_Closing" Icon="D:\PDSCartellaPDS\icona.ico" Loaded="Window_Loaded">
 
 
     <DockPanel LastChildFill="True">
@@ -53,13 +53,14 @@
                     </Grid.ColumnDefinitions>
 
                     <Grid.RowDefinitions>
-                        <RowDefinition Height="5" />
+                        <RowDefinition Height="70" />
                         <RowDefinition Height="33*" />
                         <RowDefinition Height="33*" />
                         <RowDefinition Height="33*" />
                         <RowDefinition Height="35" />
                     </Grid.RowDefinitions>
 
+                    <Label x:Name="presentazioneL" Content="Welcome to SYNCHRO" Grid.Column="1" Grid.Row="0" HorizontalAlignment="center" TextBlock.Foreground="#DDDDDD" FontSize="20" FontWeight="Bold" Height="40" Margin="0,15,0,0" VerticalAlignment="center"/>
 
                     <Grid Grid.Column="1" Grid.Row="1">
                         <Grid.ColumnDefinitions>
@@ -101,7 +102,7 @@
                            Grid.Row="4" Grid.Column="0" Grid.ColumnSpan="2">
                         <Hyperlink Click="AddAccount" Foreground="#DDDDDD" FontWeight="Bold">Non possiedi un account? Registrati</Hyperlink>
                     </Label>
-                
+
                 </Grid>
             </TabItem>
 
@@ -114,7 +115,7 @@
                     </Grid.ColumnDefinitions>
 
                     <Grid.RowDefinitions>
-                        <RowDefinition Height="5" />
+                        <RowDefinition Height="70" />
                         <RowDefinition Height="25*" />
                         <RowDefinition Height="25*" />
                         <RowDefinition Height="25*" />
@@ -122,6 +123,7 @@
                         <RowDefinition Height="35" />
                     </Grid.RowDefinitions>
 
+                    <Label x:Name="presentazioneR" Content="Welcome to SYNCHRO" Grid.Column="1" Grid.Row="0" HorizontalAlignment="center" TextBlock.Foreground="#DDDDDD" FontSize="20" FontWeight="Bold" Height="40" Margin="0,15,0,0" VerticalAlignment="center"/>
 
                     <Grid Grid.Column="1" Grid.Row="1">
                         <Grid.ColumnDefinitions>
@@ -248,7 +250,7 @@
                              Margin="6,3,12,0" SelectionChanged="LSTFileVersion_SelectionChanged" />
 
                     </Grid>
-                    
+
                     <!--Griglia box-->
                     <Grid Grid.Column="3">
                         <Grid.RowDefinitions >
@@ -385,7 +387,7 @@
                                 <Border CornerRadius="5" BorderThickness="1" Grid.Column="0"  Grid.Row="1" HorizontalAlignment="Stretch" Background="White" Height="20" BorderBrush="#DDDDDD" Margin="0,0,0,0" VerticalAlignment="Center">
                                     <xctk:IntegerUpDown x:Name="NUDTimerValue" Maximum="600" Minimum="30" AllowSpin="True" Background="Transparent" BorderThickness="0" HorizontalAlignment="Stretch" VerticalAlignment="Center" Value="60" />
                                 </Border>
-                               
+
                             </Grid>
 
 
@@ -417,7 +419,7 @@
                                 <Border CornerRadius="5" BorderThickness="1" Grid.Column="2" Grid.Row="1" HorizontalAlignment="Stretch" Background="White" Height="20" BorderBrush="#DDDDDD" Margin="0,0,0,0" VerticalAlignment="Center">
                                     <TextBox x:Name="TXTServerPort" Background="Transparent" TextWrapping="NoWrap"  BorderThickness="0" HorizontalAlignment="Stretch" FontSize="15" FontWeight="Bold" VerticalAlignment="Center" />
                                 </Border>
-                                
+
                             </Grid>
 
                         </Grid>
