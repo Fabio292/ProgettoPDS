@@ -337,9 +337,9 @@
                     </Grid.ColumnDefinitions>
 
                     <Grid.RowDefinitions>
+                        <RowDefinition Height="10" />
+                        <RowDefinition Height="320" />
                         <RowDefinition Height="0" />
-                        <RowDefinition Height="180" />
-                        <RowDefinition Height="100" />
                         <RowDefinition Height="*" />
                         <RowDefinition Height="0" />
                     </Grid.RowDefinitions>
@@ -353,11 +353,11 @@
                             </Grid.ColumnDefinitions>
 
                             <Grid.RowDefinitions>
-                                <RowDefinition Height="18" />
-                                <RowDefinition Height="30" />
-                                <RowDefinition Height="18" />
-                                <RowDefinition Height="30" />
-                                <RowDefinition Height="48" />
+                                <RowDefinition Height="35" />
+                                <RowDefinition Height="35" />
+                                <RowDefinition Height="35" />
+                                <RowDefinition Height="35" />
+                                <RowDefinition Height="65" />
                             </Grid.RowDefinitions>
 
                             <Label x:Name="inserisciPath" Grid.Column="1" Grid.Row="0" Content="Cartella da sincronizzare" TextBlock.Foreground="#DDDDDD" FontSize="13" FontWeight="Bold" Height="15" Padding="0" 
@@ -375,7 +375,7 @@
                                 <Button x:Name="BTNBrowseFolder" Grid.Column="1" Content="..." Margin="5,0,0,0" VerticalAlignment="Center" FontWeight="Bold" Background="#DDDDDD" Click="BTNBrowseFolder_Clicked"/>
                             </Grid>
 
-                            <Label x:Name="inserisciTimer" Grid.Column="1" Grid.Row="2" Content="Modifica la frequenza del Timer (secondi)" TextBlock.Foreground="#DDDDDD" FontSize="13" FontWeight="Bold" Height="15" Padding="0"
+                            <Label x:Name="inserisciTimer" Grid.Column="1" Grid.Row="2" Content="Modifica la frequenza del Timer (secondi)" TextBlock.Foreground="#DDDDDD" FontSize="13" FontWeight="Bold" Height="20" Padding="0"
                                    HorizontalAlignment="Stretch" VerticalAlignment="Center" />
 
                             <Grid Grid.Column="1" Grid.Row="3">
@@ -400,8 +400,8 @@
                                 </Grid.ColumnDefinitions>
 
                                 <Grid.RowDefinitions>
-                                    <RowDefinition Height="18" />
                                     <RowDefinition Height="30" />
+                                    <RowDefinition Height="40" />
                                 </Grid.RowDefinitions>
 
                                 <Label x:Name="LBLServerIP" Grid.Column="0" Grid.Row="0" Content="IP Server" TextBlock.Foreground="#DDDDDD" FontSize="13" FontWeight="Bold" Height="15" Padding="0"
@@ -425,11 +425,7 @@
                         </Grid>
                     </GroupBox>
 
-                    <GroupBox x:Name="GRBColorSettings" Header="Impostazioni Grafica" TextBlock.Foreground="#DDDDDD" FontSize="13" FontWeight="Bold" Grid.Column="1" Grid.Row="2" Margin="0,0,0,0">
-
-                    </GroupBox>
-
-                    <Button x:Name="BTNSaveSettings" Content="Salva" Grid.Column="1" Grid.Row="3" FontSize="14" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="Bold" Background="#DDDDDD" Height="55" Width="100" Click="BTNSaveSettings_Click"/>
+                     <Button x:Name="BTNSaveSettings" Content="Salva" Grid.Column="1" Grid.Row="3" FontSize="14" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="Bold" Background="#DDDDDD" Height="55" Width="100" Click="BTNSaveSettings_Click"/>
 
                 </Grid>
 
