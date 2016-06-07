@@ -16,6 +16,9 @@ namespace Server
 
         public static readonly string VersionElementName = "version";
         public static readonly string VersionAttributeID = "id";
+        public static readonly string VersionAttributeLastModTime = "modTime";
+        public static readonly string VersionAttributeSize = "dim";
+        public static readonly string VersionAttributeChecksum = "md5";
 
         public static readonly string FileElementName = "file";
         public static readonly string FileAttributeName = "name";
@@ -66,7 +69,7 @@ namespace Server
 
             using (SQLiteCommand sqlCmd = conn.CreateCommand())
             {
-                sqlCmd.CommandText = @"SELECT PathClient, MD5, LastModTime, Size FROM Versioni WHERE UID = @_UID AND VersionID = @_versionID;";
+                sqlCmd.CommandText = @"SELECT PathClient, MD5, LastModTime, Size FROM Versioni WHERE UID = @_UID AND VersionID = @_versionID AND Deleted = 0;";
                 //sqlCmd.Parameters.AddWithValue("@_latestV", latestVersionId);
                 sqlCmd.Parameters.AddWithValue("@_UID", UID);
                 sqlCmd.Parameters.AddWithValue("@_versionID", versionID);
@@ -140,6 +143,102 @@ namespace Server
         }
 
         /// <summary>
+        /// Genero un xml andando a leggere i dati dal DB con versioni
+        /// </summary>
+        /// <param name="conn">Connessione al DB</param>
+        /// <param name="UID">ID dell'utente</param>
+        public XmlManager(SQLiteConnection conn, int UID)
+        {
+            XElement root = new XElement(XmlManager.DirectoryElementName);
+            root.SetAttributeValue(XmlManager.DirectoryAttributeName, "_");
+
+
+            using (SQLiteCommand sqlCmd = conn.CreateCommand())
+            {
+                sqlCmd.CommandText = @"SELECT PathClient, MD5, LastModTime, Size, VersionID FROM Versioni WHERE UID = @_UID ORDER BY VersionID DESC;";
+                //sqlCmd.Parameters.AddWithValue("@_latestV", latestVersionId);
+                sqlCmd.Parameters.AddWithValue("@_UID", UID);
+
+                using (SQLiteDataReader reader = sqlCmd.ExecuteReader())
+                {
+                    string relPath;
+                    string md5;
+                    DateTime lastModTime;
+                    int fileSize;
+                    int versionID;
+
+                    while (reader.Read())
+                    {
+                        // Analizzo ogni elemento ricordando che dal DB tiro fuori SOLO VERSIONI
+                        relPath = reader.GetString(0);
+                        md5 = reader.GetString(1);
+                        lastModTime = reader.GetDateTime(2);
+                        fileSize = reader.GetInt32(3);
+                        versionID = reader.GetInt32(4);
+
+                        string fname = Path.GetFileName(relPath);
+                        string[] dirPath = Path.GetDirectoryName(relPath).Split(Constants.PathSeparator.ToCharArray(), StringSplitOptions.RemoveEmptyEntries);
+
+
+                        // Cerco la dir in cui va il file e se non c'e la creo
+                        XElement dir = this.getDirectoryElement(Path.GetDirectoryName(relPath), root);
+                        if (dir == null)
+                        {
+                            #region ricerca e creazione parziale
+                            dir = root;
+                            bool create = false;
+                            foreach (var item in dirPath)
+                            {
+                                if (create == false)
+                                {
+                                    // sto ancora cercando
+                                    var dirAus = this.getDirectoryElement(item, dir);
+                                    if (dirAus != null)
+                                    {
+                                        dir = dirAus;
+                                        continue;
+                                    }
+                                    else
+                                        create = true;
+                                }
+
+                                XElement newDir = new XElement(XmlManager.DirectoryElementName);
+                                newDir.SetAttributeValue(XmlManager.DirectoryAttributeName, item);
+
+                                dir.Add(newDir);
+                                dir = newDir;
+                            }
+                            #endregion
+                        }
+
+                        // A questo punto 'dir' sarà la cartella in cui ci andrà il file
+                        // Cerco il file
+                        XElement file = this.getFileElement(relPath, root);
+
+                        if(file == null) //Il file non è presente, lo aggiungo e poi passo ad aggiungere le versioni
+                        {
+                            file = new XElement(XmlManager.FileElementName);
+                            file.SetAttributeValue(FileAttributeName, fname);
+                            dir.Add(file);
+                        }
+
+                        XElement version = new XElement(XmlManager.VersionElementName);
+
+                        version.SetAttributeValue(VersionAttributeLastModTime, lastModTime.ToString(Constants.XmlDateFormat));
+                        version.SetAttributeValue(VersionAttributeSize, fileSize.ToString());
+                        version.SetAttributeValue(VersionAttributeChecksum, md5);
+
+                        // Aggiungo la versione al file
+                        file.Add(version);
+                    }
+
+                }
+            }
+
+            this._xmlDoc = new XDocument(root);
+        }
+
+        /// <summary>
         /// Genero un file per il'xml
         /// </summary>
         /// <param name="path">Percorso assoluto dove salvare l'xml</param>
@@ -163,59 +262,63 @@ namespace Server
             );
         }
 
-        //#region Modifiche da FSW
 
-        ///// <summary>
-        ///// Rinomina l'entry di una directory nell'xml 
-        ///// </summary>
-        ///// <param name="oldRelPath">Vecchio percorso</param>
-        ///// <param name="newRelPath">Nuovo Percorso</param>
-        //public void RenameDirectory(string oldRelPath, string newRelPath)
-        //{
-        //    // Nuovo nome della cartella
-        //    string newName = newRelPath.Split(Constants.PathSeparator.ToCharArray(), StringSplitOptions.RemoveEmptyEntries).Last();
+        /// <summary>
+        /// Cancello una directory dall'albero (e gli eventuali sottoelementi). Ritorno true se era file, false se era directory
+        /// </summary>
+        /// <param name="relPath">Percorso relativo della directory cancellata</param>
+        public void DeleteElement(string relPath, List<string> deletedFiles)
+        {
+            //string path = Utilis.AbsToRelativePath(absPath, Settings.SynchPath);
+            XElement el = this.getDirectoryElement(relPath);
 
-        //    XElement dirElement = this.getDirectoryElement(oldRelPath);
+            // Controllo se ho effettivamente trovato l'elemento, se è null allora significa che è un file
+            if (el == null)
+            {
+                el = this.getFileElement(relPath);
+                deletedFiles.Add(relPath);
+            }
+            else
+            {
+                // Richiamo sulla cartella
+                searchFileRecursive(el, relPath, deletedFiles);
+            }
 
-        //    Logger.log("vado a rinominare " + dirElement.Attribute(DirectoryAttributeName));
-        //    // Modifico il nome dell'attributo
-        //    dirElement.Attribute(DirectoryAttributeName).Value = newName;
-        //}
+            el.Remove();
+        }
 
-        ///// <summary>
-        ///// Rinomina l'entry di un file nell'xml 
-        ///// </summary>
-        ///// <param name="oldRelPath">Vecchio percorso</param>
-        ///// <param name="newRelPath">Nuovo Percorso</param>
-        //public void RenameFile(string oldRelPath, string newRelPath)
-        //{
-        //    // Nome del nuovo file
-        //    string newName = newRelPath.Split(Constants.PathSeparator.ToCharArray(), StringSplitOptions.RemoveEmptyEntries).Last();
 
-        //    XElement fileElement = this.getFileElement(oldRelPath);
+        /// <summary>
+        /// Cerco nell'elemento passato tutti i file e li aggiungo alla lista
+        /// </summary>
+        /// <param name="e">Elemento directory</param>
+        /// <param name="path">Percorso parziale</param>
+        /// <param name="deletedFiles">Lista file cancellati</param>
+        private void searchFileRecursive(XElement e, string path, List<string> deletedFiles)
+        {
+            // Sottocartelle sulle quali ricorrere
+            var subDirs = e.Elements(DirectoryElementName);
 
-        //    Logger.log("vado a rinominare " + fileElement.Attribute(FileAttributeName));
-        //    // Modifico il nome dell'attributo
-        //    fileElement.Attribute(FileAttributeName).Value = newName;
-        //}
+            foreach (var subdir in subDirs)
+            {
+                // Nuovo percorso
+                string np = path + Constants.PathSeparator + subdir.Attribute(XmlManager.DirectoryAttributeName).Value;
 
-        ///// <summary>
-        ///// Aggiorno l'entry di un file ricalcolandone l'md5 e data di ultima modifica
-        ///// </summary>
-        ///// <param name="fa">Classe contenente gli attributi del file</param>
-        //public void RefreshFile(FileAttributeHelper fa)
-        //{
-        //    //FileInfo fInfo = new FileInfo(Utilis.RelativeToAbsPath(relPath));
-        //    XElement fileElement = this.getFileElement(fa.RelFilePath);
+                // Ricorro sulle sottocartelle
+                searchFileRecursive(subdir, np, deletedFiles);
+            }
 
-        //    // Modifico gli attributi
-        //    fileElement.Attribute(FileAttributeSize).Value = fa.Size.ToString();
-        //    fileElement.Attribute(FileAttributeLastModTime).Value = fa.LastModtime.ToString();
+            // Trovo i file presenti in questa cartella
+            var subFiles = e.Elements(FileElementName);
 
-        //}
+            foreach (var file in subFiles)
+            {
+                // Li aggiungo alla lista
+                deletedFiles.Add(path + Constants.PathSeparator + file.Attribute(XmlManager.FileAttributeName).Value);
+            }
 
-        //#endregion
 
+        }
 
         #region Ricerca Elementi
         /// <summary>
@@ -256,7 +359,7 @@ namespace Server
             XElement ret = null;
             XElement dir = this.getDirectoryElement(Path.GetDirectoryName(relPath), src);
 
-            ret = dir.Elements(FileElementName).Where(elt => elt.Attribute(FileAttributeName).Value == Path.GetFileName(relPath)).First();
+            ret = dir.Elements(FileElementName).Where(elt => elt.Attribute(FileAttributeName).Value == Path.GetFileName(relPath)).FirstOrDefault();
 
             return ret;
         }
@@ -264,93 +367,6 @@ namespace Server
 
 
         #region CONFRONTO XML
-        /// <summary>
-        /// controlla due XML rendendo l'elenco dei files che sono stati aggiunti/modificati
-        /// l'elenco viene memorizzato in res (stringa che deve essere passata vuota)
-        /// </summary>
-        /// <param name="rc">XElement del client </param>
-        /// <param name="rs">XElement del server </param>
-        /// <param name="res">stringa (inizializzata vuota) che memorizza l'elenco dei path dei file diversi</param>
-        /// <param name="path">stringa per memorizzare il path di ciascun file differente</param>
-        public static int checkDiff(XElement rc, XElement rs, List<String> refList, ref string res, string path)
-        {
-            int counter = 0;
-            bool presente = false;
-            bool uguali = false;
-            bool cartellaesistente = false;
-
-
-            var filesC = from e in rc.Elements(FileElementName)
-                         select e;
-
-            var filesS = from eS in rs.Elements(FileElementName)
-                         select eS;
-
-            var subdirsC = from cc in rc.Elements(DirectoryElementName)
-                           select cc;
-
-            var subdirsS = from cs in rs.Elements(DirectoryElementName)
-                           select cs;
-
-
-            foreach (XElement e in filesC)
-            {
-                ///cerco se e (cioè il file i-esimo) sia presente nella cartella considerata
-                presente = false;
-                uguali = false;
-                foreach (XElement eS in filesS)
-                {
-                    if (e.Attribute("name").ToString().CompareTo(eS.Attribute("name").ToString()) == 0)
-                    {
-                        //nome presente
-                        if (e.Attribute("md5").ToString().CompareTo(eS.Attribute("md5").ToString()) == 0)
-                        {
-                            //file identico in nome e in checksum
-                            uguali = true;
-                        }
-                        presente = true;
-                    }
-                }
-
-                if (presente == false)
-                {
-                    counter++;
-                    res += "PUSH" + path + "\\" + e.Attribute("name").Value + "\n";
-                    refList.Add(path + "\\" + e.Attribute("name").Value);
-                }
-                else if (uguali == false)
-                {
-                    counter++;
-                    res += "PUSH* " + path + "\\" + e.Attribute("name").Value + "\n";
-                    refList.Add(path + "\\" + e.Attribute("name").Value);
-                }
-            }
-
-            ///chiamo ricorsivamente la funzione per ogni sottocartella che sia presente anche lato server
-            foreach (XElement cc in subdirsC)
-            {
-                cartellaesistente = false;
-                foreach (XElement cs in subdirsS)
-                {
-                    if (cc.Attribute("name").ToString().CompareTo(cs.Attribute("name").ToString()) == 0)
-                    {
-                        //cartella esistente, ricorro
-                        cartellaesistente = true;
-                        counter += checkDiff(cc, cs, refList, ref res, path + "\\" + cc.Attribute("name").Value);
-                    }
-                }
-                if (cartellaesistente == false)
-                {
-                    //cartella inesistente, stampo e NON RICORRO
-                    //res += ("cartella NUOVA " + path + "\\" + cc.Attribute("name").Value + "\n");
-
-                    //TO DO cercare una funzione che renda il path completo dato un XElement, metterla come stringa di partenza al posto di path
-                    counter += getSubdirs(cc, refList, ref res, path + "\\" + cc.Attribute("name").Value);
-                }
-            }
-
-            return counter;
-        }
 
         /// <summary>
         /// funzione che elenca ricorsivamente tutti i files e tutte le cartelle presenti 

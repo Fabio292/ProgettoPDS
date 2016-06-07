@@ -51,8 +51,8 @@ namespace Client
                 this.isConnected = false;
 
                 //TODO setto i parametri della connessione
-                conn.SendTimeout = 15000;
-                conn.ReceiveTimeout = 15000;
+                conn.SendTimeout = Constants.SocketTimeout;
+                conn.ReceiveTimeout = Constants.SocketTimeout;
 
 
                 conn.Connect(Settings.ServerIP, Settings.ServerPort);
@@ -222,7 +222,7 @@ namespace Client
         /// analizza le differenze presenti tra la cartella lato client e quella lato server
         /// invia i files nuovi/modificati
         /// </summary>
-        public void ClientSync(XmlManager xmlClient, string authToken)
+        public void ClientSync(XmlManager xmlClient, string authToken, List<string> deletedFileList)
         {
             XElement xmlRootServer;
             XElement xmlRootClient;
@@ -269,18 +269,36 @@ namespace Client
                     #endregion
 
                     #region DELETED FILES
-
+                    //Mando al server la lista dei file che ho cancellato
+                    int elementsNumber = deletedFileList.Count;
+                    Logger.Info("il numero di elementi cancellati e': " + elementsNumber);
+                    if(elementsNumber != 0)
+                    {
+                        sendDeletedFiles(deletedFileList, authToken);
+                    }
+                    else
+                    {
+                        // Non ho file da cancellare
+                        FileNumCommand numFiles = new FileNumCommand(0, authToken);
+                        Utilis.SendCmdSync(conn, numFiles);
+                    }
                     #endregion
 
                     #region SYNC SERVER -> CLIENT
                     //fase A: il client guarda se il server abbia dei files aggiornati o nuovi
                     //li memorizza in una lista e li richiede al server
-                    int elementsNumber = XmlManager.checkDiff(xmlRootServer, xmlRootClient, refList, ref r, path, refMap, 1);
+                    elementsNumber = XmlManager.checkDiff(xmlRootServer, xmlRootClient, refList, ref r, path, refMap, 1, deletedFileList);
                     Logger.Debug("l'elenco comandi inviati al server e': \n" + r);
                     Logger.Info("il numero di elementi da chiedere al server e': " + elementsNumber);
                     if (elementsNumber != 0)
                     {
                         getFilesModifiedFromServer(elementsNumber, refMap, authToken);
+                    }
+                    else
+                    {
+                        // Non ho file da inviare
+                        FileNumCommand numFiles = new FileNumCommand(0, authToken);
+                        Utilis.SendCmdSync(conn, numFiles);
                     }
 
                     #endregion
@@ -297,14 +315,16 @@ namespace Client
                     //fase B: il client seleziona i files non memorizzati dal server (nuovi o modificati)
                     //li memorizza in una lista e li invia al server
                     //guardo le differenze tra i due XDocuments e popolo r delle stringhe di richiesta da inviare al server
-                    elementsNumber = XmlManager.checkDiff(xmlRootClient, xmlRootServer, refList, ref r, path, refMap, 0);
+                    elementsNumber = XmlManager.checkDiff(xmlRootClient, xmlRootServer, refList, ref r, path, refMap, 0, deletedFileList);
                     Logger.Debug("l'elenco comandi inviati al server e': \n" + r);
                     Logger.Info("il numero di elementi da inviare al server e': " + elementsNumber);
 
                     if(elementsNumber == 0)
                     {
+                        // Non ho file da inviare
                         Logger.Debug("Chiudo perche' non ho file da salvare");
-                        this.sendLogout();
+                        FileNumCommand numFiles = new FileNumCommand(0, authToken);
+                        Utilis.SendCmdSync(conn, numFiles);
                     }
                     else
                         updateDirectory(xmlClient, elementsNumber, refList, authToken);
@@ -341,6 +361,31 @@ namespace Client
 
         }
 
+        /// <summary>
+        /// Mando al server i file cancellati
+        /// </summary>
+        /// <param name="deletedFileList">Lista dei file cancellati</param>
+        private void sendDeletedFiles(List<string> deletedFileList, string authToken)
+        {
+            int elementi = deletedFileList.Count;
+            FileNumCommand numFiles = new FileNumCommand(deletedFileList.Count, authToken);
+            Utilis.SendCmdSync(conn, numFiles);
+
+            Logger.Info("Avvio la procedura di invio file cancellati al server. " + elementi + " file");
+
+            foreach (string filePath in deletedFileList)
+            {
+                // Invio le informazioni sul file
+                Command deletedFile = new Command(CmdType.deletedFile, @"\" + filePath);
+                Utilis.SendCmdSync(conn, deletedFile);
+
+                Logger.Debug("Ho inviato cancellazione file " + filePath);
+            }
+
+            Logger.Info("File cancellati inviati al server");
+
+        }
+
 
         /// <summary>
         /// invia al server i files creati/modificati
@@ -349,8 +394,6 @@ namespace Client
         private void updateDirectory(XmlManager xmlClient, int elementi, List<String> refString, string authToken)
         {
             #region Preparazione synch
-
-
             //invio il numero di files che il server deve aspettarsi
             FileNumCommand numFiles = new FileNumCommand(elementi, authToken);
             Utilis.SendCmdSync(conn, numFiles);
@@ -395,8 +438,13 @@ namespace Client
                 Utilis.SendCmdSync(conn, requestedFile);
                 Logger.Debug("Ho inviato la richiesta del file " + requestedFile.Payload);
 
-                //TODO cancellare il file precedente
-                Utilis.GetFile(conn, Utilis.RelativeToAbsPath(entry.Key, Settings.SynchPath), entry.Value.FileSize);
+                string destPath = Utilis.RelativeToAbsPath(entry.Key, Settings.SynchPath);
+
+                // Se il file esiste gia lo cancello
+                if (File.Exists(destPath) == true)
+                    File.Delete(destPath);
+
+                Utilis.GetFile(conn, destPath, entry.Value.FileSize);
                 //TODO modificare la data di ultima modifica del file
 
                 Logger.Debug("Ho ricevuto il file: " + entry.Key);

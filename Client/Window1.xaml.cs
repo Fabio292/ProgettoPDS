@@ -618,7 +618,7 @@ namespace Client
             // Prima synch
             try
             {
-                client.ClientSync(XMLInstance, this.authToken);
+                client.ClientSync(XMLInstance, this.authToken, deletedFilesList);
             }
             catch (Exception ex)
             {
@@ -997,7 +997,7 @@ namespace Client
         {
             try
             {
-                client.ClientSync(XMLInstance, authToken);
+                client.ClientSync(XMLInstance, authToken, deletedFilesList);
                 deletedFilesList.Clear();
             }
             catch (Exception ex)

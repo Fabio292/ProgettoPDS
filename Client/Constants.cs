@@ -7,7 +7,7 @@ namespace Client
         /// <summary>
         /// Abilito o meno i LOG di tipo Debug
         /// </summary>
-        public const bool DebugEnabled = false;
+        public static bool DebugEnabled = false;
         
         /// <summary>
         /// Dimensione del campo comando
@@ -103,6 +103,11 @@ namespace Client
         /// MD5 di un file vuoto
         /// </summary>
         public const string EmptyFileDigest = "d41d8cd98f00b204e9800998ecf8427e";
+
+        /// <summary>
+        /// Timeout dei socket
+        /// </summary>
+        public const int SocketTimeout = 100000;
     }
 
     /// <summary>
@@ -133,12 +138,13 @@ namespace Client
         xmlDigest,          // XmlDigestCommand
         getXML,             // senza payload
         Xml,                // XmlCommand
-        numFile,
+        numFile,            // FileNumCommand
         sendFile,
+        deletedFile,
         startSynch,
         endSynch,
-        infoNum, 
-        fileName,       
+        infoNum,
+        fileName,
         #endregion
 
         #region COMANDI GENERICI

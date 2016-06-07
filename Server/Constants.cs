@@ -7,7 +7,7 @@ namespace Server
         /// <summary>
         /// Abilito o meno i LOG di tipo Debug
         /// </summary>
-        public const bool DebugEnabled = false;
+        public static bool DebugEnabled = false;
 
         /// <summary>
         /// Dimensione del campo comando
@@ -101,6 +101,11 @@ namespace Server
         /// Lunghezza della stringa generata a random per la ricezione file
         /// </summary>
         public const int RNDNameLength = 10;
+
+        /// <summary>
+        /// Timeout dei socket
+        /// </summary>
+        public const int SocketTimeout = 100000;
     }
 
     /// <summary>
@@ -133,6 +138,7 @@ namespace Server
         Xml,                // XmlCommand
         numFile,            // FileNumCommand
         sendFile,
+        deletedFile,
         startSynch,
         endSynch,
         infoNum,

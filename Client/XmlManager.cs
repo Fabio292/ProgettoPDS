@@ -308,7 +308,7 @@ namespace Client
         /// <param name="res">stringa (inizializzata vuota) che memorizza l'elenco dei path dei file diversi</param>
         /// <param name="path">stringa per memorizzare il path di ciascun file differente</param>
         /// <param name="mode"> modalità di utilizzo della funzione: 0 sinvio files client -> server, 1 invio files server -> client</param> >
-        public static int checkDiff(XElement rc, XElement rs, List<String> refList, ref string res, string path, Dictionary<String, VersionInfo> refMap, int mode)
+        public static int checkDiff(XElement rc, XElement rs, List<String> refList, ref string res, string path, Dictionary<String, VersionInfo> refMap, int mode, List<string> deletedFileList)
         {
             int counter = 0;
             bool presente = false;
@@ -338,32 +338,64 @@ namespace Client
                 {
                     if (e.Attribute("name").ToString().CompareTo(eS.Attribute("name").ToString()) == 0)
                     {
-                        //nome presente
-                        if ((e.Attribute("md5").ToString().CompareTo(eS.Attribute("md5").ToString()) == 0) && (e.Attribute("modTime").ToString().CompareTo(eS.Attribute("modTime").ToString()) == 0))
+                        //nome presente, controllo le date
+                        if(mode == 0)
                         {
-                            //file identico in nome, in checksum e in data di ultima modifica
-                            uguali = true;
+                            if ((e.Attribute("md5").ToString().CompareTo(eS.Attribute("md5").ToString()) == 0) && (e.Attribute("modTime").ToString().CompareTo(eS.Attribute("modTime").ToString()) == 0))
+                            {
+                                //file identico in nome, in checksum e in data di ultima modifica
+                                uguali = true;
+                            }
                         }
+                        else
+                        {
+                            try
+                            {
+                                DateTime sDt = Convert.ToDateTime(e.Attribute("modTime").Value);
+                                DateTime cDt = Convert.ToDateTime(eS.Attribute("modTime").Value);
+
+                                if (DateTime.Compare(cDt, sDt) >= 0)
+                                    uguali = true;
+                            }
+                            catch (Exception)
+                            {
+                                continue;
+                            }
+                        }
+
                         presente = true;
                     }
                 }
 
                 if (presente == false)
                 {
-                    //file nuovo
-                    counter++;
-                    res += "PUSH" + path + "\\" + e.Attribute("name").Value + "\n";
-                    if (mode == 0)
+                    if (mode == 1)
                     {
-                        refList.Add(path + "\\" + e.Attribute("name").Value);
+                        //Controllo se non è presente nella lista file cancellati
+                        string deletedPath = e.Attribute("name").Value;
+                        if(deletedFileList.Contains(deletedPath) == true)
+                        {
+                            // Nella lista c'è il file che ho cancellato, quindi lo ignoro
+                            continue;
+                        }
                     }
-                    else if (mode == 1)
+                    else
                     {
-                        VersionInfo infos = new VersionInfo();
-                        infos.LastModTime = Convert.ToDateTime(e.Attribute("modTime").Value);
-                        infos.FileSize = Convert.ToInt32(e.Attribute("dim").Value);
-                        infos.Md5 = e.Attribute("md5").Value;
-                        refMap.Add(path + "\\" + e.Attribute("name").Value, infos);
+                        //file nuovo
+                        counter++;
+                        res += "PUSH" + path + "\\" + e.Attribute("name").Value + "\n";
+                        if (mode == 0)
+                        {
+                            refList.Add(path + "\\" + e.Attribute("name").Value);
+                        }
+                        else if (mode == 1)
+                        {
+                            VersionInfo infos = new VersionInfo();
+                            infos.LastModTime = Convert.ToDateTime(e.Attribute("modTime").Value);
+                            infos.FileSize = Convert.ToInt32(e.Attribute("dim").Value);
+                            infos.Md5 = e.Attribute("md5").Value;
+                            refMap.Add(path + "\\" + e.Attribute("name").Value, infos);
+                        }
                     }
                     
 
@@ -398,7 +430,7 @@ namespace Client
                     {
                         //cartella esistente, ricorro
                         cartellaesistente = true;
-                        counter += checkDiff(cc, cs, refList, ref res, path + "\\" + cc.Attribute("name").Value, refMap, mode);
+                        counter += checkDiff(cc, cs, refList, ref res, path + "\\" + cc.Attribute("name").Value, refMap, mode, deletedFileList);
                     }
                 }
                 if (cartellaesistente == false)

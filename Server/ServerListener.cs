@@ -110,6 +110,17 @@ namespace Server
                     // Start listening for client requests.
                     tcpListener.Start();
                     Logger.Info("Server in ascolto");
+
+
+                    using (SQLiteConnection cnn = new SQLiteConnection(DB.GetConnectionString()))
+                    {
+                        cnn.Open();
+                        XmlManager testV = new XmlManager(cnn, 1);
+                        string xmlPath = Constants.XmlSavePath + Constants.PathSeparator + "version.xml";
+                        testV.SaveToFile(xmlPath);
+                        
+                    }
+
                     while (!ct.IsCancellationRequested)
                     {
                         TcpClient client = await tcpListener.AcceptTcpClientAsync().ConfigureAwait(false);
@@ -139,8 +150,8 @@ namespace Server
         {
 
             //TODO spostare in configurazione
-            client.SendTimeout = 15000;
-            client.ReceiveTimeout = 15000;
+            client.SendTimeout = Constants.SocketTimeout;
+            client.ReceiveTimeout = Constants.SocketTimeout;
 
 
             try
@@ -180,6 +191,7 @@ namespace Server
                                                         
 
                         case CmdType.getXmlDigest:
+                            // Inizio la procedura di synch
                             ServerListener.clientSynch(client, k.AuthToken);
                             exitFlag = true;
                             break;
@@ -195,8 +207,6 @@ namespace Server
             }
             catch (Exception e) // Eccezione non gestita, cerco di recuperare il metodo e la linea 
             {
-                // Ottengo il metodo che ha generato l'eccezione
-
                 StackTrace st = new StackTrace(e, true);
                 StackFrame sf = Utilis.GetFirstValidFrame(st);
 
@@ -563,18 +573,20 @@ namespace Server
                 using (SQLiteTransaction tr = connessione.BeginTransaction())
                 {
                     //Ricevo elenco file cancellati
-
+                    ServerListener.getDeletedFiles(client, connessione, UID);
+                    Logger.Info("File cancellati ricevuti");
 
 
                     //Invio file nuovi al client
                     int lastVersionID = 0;
                     ServerListener.sendFilesRequested(client, connessione, UID, ref lastVersionID);
+                    Logger.Info("File modificati inviati");
 
 
                     // Ricevo le modifiche dal client      
                     lastVersionID = 0;
                     ServerListener.getUpdates(client, connessione, UID, ref lastVersionID);
-                    Logger.Info("File ricevuti");
+                    Logger.Info("File modificati ricevuti");
 
                     
                     // Ho concluso le modifiche al DB
@@ -597,7 +609,45 @@ namespace Server
             }
         }
 
-       
+        private static void getDeletedFiles(TcpClient client, SQLiteConnection connessione, int UID)
+        {
+            int numFiles = 0;
+            FileNumCommand numeroFilesCmd = new FileNumCommand(Utilis.GetCmdSync(client));
+            numFiles = numeroFilesCmd.NumFiles;
+
+            for (int i = 0; i < numFiles; i++)
+            {
+                //Ricevo i nomi dei file e segno sul db che sono cancellati
+                Command request = Utilis.GetCmdSync(client);
+                if (request.kmd != CmdType.deletedFile)
+                {
+                    Logger.Error("Il comando ricevuto non è corretto, atteso <filename>, ricevuto: <" + request.kmd + ">");
+                    return; //TODO notificare l'errore all'utente
+                }
+
+                string relFilePath = request.Payload;
+                Logger.Debug("Cancellato file " + relFilePath);
+
+                //Prendo l'ultima versione del file
+                int lastVersion = ServerListener.getLastVersionForFile(UID, relFilePath, connessione);
+
+                //segno nel db che e cancellato
+                using (SQLiteCommand sqlCmd = connessione.CreateCommand())
+                {
+                    sqlCmd.CommandText = @"UPDATE Versioni SET Deleted = @_deleted WHERE UID = @_UID AND VersionID = @_version AND PathClient = @_pathClient;";
+                    sqlCmd.Parameters.AddWithValue("@_deleted", true);
+                    sqlCmd.Parameters.AddWithValue("@_UID", UID);
+                    sqlCmd.Parameters.AddWithValue("@_version", lastVersion);
+                    sqlCmd.Parameters.AddWithValue("@_pathClient", relFilePath);
+
+                    sqlCmd.ExecuteNonQuery();
+                }
+
+            }
+
+        }
+
+
         /// <summary>
         /// invio i files al client su richiesta (prima fase di sincronizzazione)
         /// </summary>
