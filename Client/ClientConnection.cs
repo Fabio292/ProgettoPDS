@@ -226,11 +226,7 @@ namespace Client
         {
             XElement xmlRootServer;
             XElement xmlRootClient;
-            List<String> refList = new List<String>();
-            Dictionary<String, VersionInfo> refMap = new Dictionary<string, VersionInfo>();
             
-            string r = "";
-            string path = "";
 
             try
             {
@@ -270,9 +266,8 @@ namespace Client
 
                     #region DELETED FILES
                     //Mando al server la lista dei file che ho cancellato
-                    int elementsNumber = deletedFileList.Count;
-                    Logger.Info("il numero di elementi cancellati e': " + elementsNumber);
-                    if(elementsNumber != 0)
+                    Logger.Info("il numero di elementi cancellati e': " + deletedFileList.Count);
+                    if(deletedFileList.Count != 0)
                     {
                         sendDeletedFiles(deletedFileList, authToken);
                     }
@@ -287,47 +282,36 @@ namespace Client
                     #region SYNC SERVER -> CLIENT
                     //fase A: il client guarda se il server abbia dei files aggiornati o nuovi
                     //li memorizza in una lista e li richiede al server
-                    elementsNumber = XmlManager.checkDiff(xmlRootServer, xmlRootClient, refList, ref r, path, refMap, 1, deletedFileList);
-                    Logger.Debug("l'elenco comandi inviati al server e': \n" + r);
-                    Logger.Info("il numero di elementi da chiedere al server e': " + elementsNumber);
-                    if (elementsNumber != 0)
-                    {
-                        getFilesModifiedFromServer(elementsNumber, refMap, authToken);
-                    }
+                    List<VersionInfo> fileToGetList = new List<VersionInfo>();
+                    XmlManager.checkDiffClientServerTOClient(xmlRootClient, xmlRootServer, fileToGetList, deletedFileList);
+
+                    Logger.Info("il numero di elementi da chiedere al server e': " + fileToGetList.Count);
+                    if (fileToGetList.Count != 0)
+                        getFilesModifiedFromServer(fileToGetList, authToken);
                     else
                     {
-                        // Non ho file da inviare
+                        // Non ho file da Ricevere
                         FileNumCommand numFiles = new FileNumCommand(0, authToken);
                         Utilis.SendCmdSync(conn, numFiles);
                     }
-
                     #endregion
-
-                    //pulizia variabili
-                    r = "";
-                    path = "";
-                    elementsNumber = 0;
-                    refList.Clear();
-                    refMap.Clear();
-
-
+                    
                     #region SYNC CLIENT -> SERVER
                     //fase B: il client seleziona i files non memorizzati dal server (nuovi o modificati)
                     //li memorizza in una lista e li invia al server
                     //guardo le differenze tra i due XDocuments e popolo r delle stringhe di richiesta da inviare al server
-                    elementsNumber = XmlManager.checkDiff(xmlRootClient, xmlRootServer, refList, ref r, path, refMap, 0, deletedFileList);
-                    Logger.Debug("l'elenco comandi inviati al server e': \n" + r);
-                    Logger.Info("il numero di elementi da inviare al server e': " + elementsNumber);
+                    List<VersionInfo> fileToSend = new List<VersionInfo>();
+                    XmlManager.checkDiffClientClientTOServer(xmlRootClient, xmlRootServer, fileToSend);
 
-                    if(elementsNumber == 0)
+                    Logger.Info("il numero di elementi da inviare al server e': " + fileToSend.Count);
+                    if(fileToSend.Count != 0)
+                        sendFilesModifiedToServer(fileToSend, authToken);
+                    else
                     {
                         // Non ho file da inviare
-                        Logger.Debug("Chiudo perche' non ho file da salvare");
                         FileNumCommand numFiles = new FileNumCommand(0, authToken);
                         Utilis.SendCmdSync(conn, numFiles);
                     }
-                    else
-                        updateDirectory(xmlClient, elementsNumber, refList, authToken);
                     #endregion
 
                     #region Chiusura synch
@@ -390,22 +374,19 @@ namespace Client
         /// <summary>
         /// invia al server i files creati/modificati
         /// </summary>
-        /// <param name="elementi">numero di elementsNumber da inviare al server</param>
-        private void updateDirectory(XmlManager xmlClient, int elementi, List<String> refString, string authToken)
+        private void sendFilesModifiedToServer(List<VersionInfo> fileToSendList, string authToken)
         {
             #region Preparazione synch
             //invio il numero di files che il server deve aspettarsi
-            FileNumCommand numFiles = new FileNumCommand(elementi, authToken);
+            FileNumCommand numFiles = new FileNumCommand(fileToSendList.Count, authToken);
             Utilis.SendCmdSync(conn, numFiles);
             #endregion
 
-            Logger.Info("Avvio la procedura di invio file al server. " + elementi + " file");
-            
-            #region Invio file
-            foreach (string filePath in refString)
+            #region Invio file al server
+            foreach (VersionInfo fileToSendInfo in fileToSendList)
             {
                 // Invio le informazioni sul file
-                FileInfoCommand f = new FileInfoCommand(filePath, authToken);
+                FileInfoCommand f = new FileInfoCommand(fileToSendInfo.relPath, authToken);
                 Utilis.SendCmdSync(conn, f);
 
                 Utilis.SendFile(conn, f.AbsFilePath, f.FileSize);
@@ -421,33 +402,32 @@ namespace Client
         /// <summary>
         /// scarica dal server i files modificati
         /// </summary>
-        private void getFilesModifiedFromServer(int elementi, Dictionary<String, VersionInfo> refMap, string authToken)
-        {
-            
+        private void getFilesModifiedFromServer(List<VersionInfo> fileToGetList, string authToken)
+        {            
             #region Preparazione synch
             //invio il numero di files che il client richiede al server
-            FileNumCommand numFiles = new FileNumCommand(elementi, authToken);
+            FileNumCommand numFiles = new FileNumCommand(fileToGetList.Count, authToken);
             Utilis.SendCmdSync(conn, numFiles);
             #endregion
 
-            #region sincronizzazione files
-            foreach (KeyValuePair<string, VersionInfo> entry in refMap)
+            #region Richiedo i file al server
+            foreach (VersionInfo fileToGetInfo in fileToGetList)
             {
                 // Invio le informazioni sul file
-                Command requestedFile = new Command(CmdType.fileName, entry.Key);
+                Command requestedFile = new Command(CmdType.fileName, fileToGetInfo.relPath);
                 Utilis.SendCmdSync(conn, requestedFile);
-                Logger.Debug("Ho inviato la richiesta del file " + requestedFile.Payload);
-
-                string destPath = Utilis.RelativeToAbsPath(entry.Key, Settings.SynchPath);
+                Logger.Debug("Ho inviato la richiesta del file " + fileToGetInfo.relPath);
+                
+                string destPath = Utilis.RelativeToAbsPath(fileToGetInfo.relPath, Settings.SynchPath);
 
                 // Se il file esiste gia lo cancello
                 if (File.Exists(destPath) == true)
                     File.Delete(destPath);
 
-                Utilis.GetFile(conn, destPath, entry.Value.FileSize);
-                //TODO modificare la data di ultima modifica del file
+                Utilis.GetFile(conn, destPath, fileToGetInfo.FileSize);
+                //TODO modificare la data di ultima modifica del file ?
 
-                Logger.Debug("Ho ricevuto il file: " + entry.Key);
+                Logger.Debug("Ho ricevuto il file: " + fileToGetInfo.relPath);
             }
             #endregion
             Logger.Info("Ho finito di scaricare dal server i files mancanti");

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Data.SQLite;
 using System.Diagnostics;
@@ -614,6 +614,7 @@ namespace Server
             int numFiles = 0;
             FileNumCommand numeroFilesCmd = new FileNumCommand(Utilis.GetCmdSync(client));
             numFiles = numeroFilesCmd.NumFiles;
+            Logger.Info("il numero di files che il client ha cancellato e': " + numFiles);
 
             for (int i = 0; i < numFiles; i++)
             {
@@ -996,14 +997,18 @@ namespace Server
         /// <param name="client">Connessione TCP al client</param>
         private static void sendXmlDigest(TcpClient client, int UID)
         {
-            string xmlPath = Constants.PathServerFile + Constants.PathSeparator + UID + ".xml";
-            if (!File.Exists(xmlPath))
-                XmlManager.InitializeXmlFile(xmlPath);
+            //string xmlPath = Constants.PathServerFile + Constants.PathSeparator + UID + ".xml";
+            //if (!File.Exists(xmlPath))
+            //    XmlManager.InitializeXmlFile(xmlPath);
 
-            XmlManager xml = new XmlManager(xmlPath);
+            using (SQLiteConnection cnn = new SQLiteConnection(DB.GetConnectionString()))
+            {
+                cnn.Open();
+                XmlManager xml = new XmlManager(cnn, UID);
 
-            XmlDigestCommand digest = new XmlDigestCommand(xml, Constants.ServerAuthToken);
-            Utilis.SendCmdSync(client, digest);
+                XmlDigestCommand digest = new XmlDigestCommand(xml, Constants.ServerAuthToken);
+                Utilis.SendCmdSync(client, digest);
+            }
         }
 
         /// <summary>
@@ -1012,14 +1017,18 @@ namespace Server
         /// <param name="xml"> xml dell'ultima versione della cartella lato server</param>
         public static void sendLastXml(TcpClient cl, int UID)
         {
-            string xmlPath = Constants.PathServerFile + Constants.PathSeparator + UID + ".xml";
-            if (!File.Exists(xmlPath))
-                XmlManager.InitializeXmlFile(xmlPath);
+            //string xmlPath = Constants.PathServerFile + Constants.PathSeparator + UID + ".xml";
+            //if (!File.Exists(xmlPath))
+            //    XmlManager.InitializeXmlFile(xmlPath);
 
-            XmlManager xml = new XmlManager(xmlPath);
+            using (SQLiteConnection cnn = new SQLiteConnection(DB.GetConnectionString()))
+            {
+                cnn.Open();
+                XmlManager xml = new XmlManager(cnn, UID);
 
-            XmlCommand lastXml = new XmlCommand(xml, Constants.ServerAuthToken);
-            Utilis.SendCmdSync(cl, lastXml);
+                XmlCommand lastXml = new XmlCommand(xml, Constants.ServerAuthToken);
+                Utilis.SendCmdSync(cl, lastXml);
+            }
         }
 
         /// <summary>
@@ -1045,5 +1054,3 @@ namespace Server
         #endregion
     }
 }
-
-

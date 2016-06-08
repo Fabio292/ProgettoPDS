@@ -125,7 +125,6 @@
     <Compile Include="Command.cs" />
     <Compile Include="Constants.cs" />
     <Compile Include="DB.cs" />
-    <Compile Include="FileAttributeHelper.cs" />
     <Compile Include="Logger.cs" />
     <Compile Include="ServerListener.cs" />
     <Compile Include="Settings.cs" />

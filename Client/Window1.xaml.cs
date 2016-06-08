@@ -1024,6 +1024,8 @@ namespace Client
         public DateTime LastModTime;
         public long FileSize;
         public int versionID;
+
+        public string relPath;
     }
     
     public enum TabIndexEnum : int

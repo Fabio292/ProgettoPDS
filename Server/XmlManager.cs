@@ -19,6 +19,7 @@ namespace Server
         public static readonly string VersionAttributeLastModTime = "modTime";
         public static readonly string VersionAttributeSize = "dim";
         public static readonly string VersionAttributeChecksum = "md5";
+        public static readonly string VersionAttributeLastVersion = "lastVersion";
 
         public static readonly string FileElementName = "file";
         public static readonly string FileAttributeName = "name";
@@ -155,7 +156,7 @@ namespace Server
 
             using (SQLiteCommand sqlCmd = conn.CreateCommand())
             {
-                sqlCmd.CommandText = @"SELECT PathClient, MD5, LastModTime, Size, VersionID FROM Versioni WHERE UID = @_UID ORDER BY VersionID DESC;";
+                sqlCmd.CommandText = @"SELECT PathClient, MD5, LastModTime, Size, VersionID, LastVersion FROM Versioni WHERE UID = @_UID ORDER BY VersionID DESC;";
                 //sqlCmd.Parameters.AddWithValue("@_latestV", latestVersionId);
                 sqlCmd.Parameters.AddWithValue("@_UID", UID);
 
@@ -166,6 +167,7 @@ namespace Server
                     DateTime lastModTime;
                     int fileSize;
                     int versionID;
+                    bool lastVersion;
 
                     while (reader.Read())
                     {
@@ -175,6 +177,7 @@ namespace Server
                         lastModTime = reader.GetDateTime(2);
                         fileSize = reader.GetInt32(3);
                         versionID = reader.GetInt32(4);
+                        lastVersion = reader.GetBoolean(5);
 
                         string fname = Path.GetFileName(relPath);
                         string[] dirPath = Path.GetDirectoryName(relPath).Split(Constants.PathSeparator.ToCharArray(), StringSplitOptions.RemoveEmptyEntries);
@@ -227,6 +230,8 @@ namespace Server
                         version.SetAttributeValue(VersionAttributeLastModTime, lastModTime.ToString(Constants.XmlDateFormat));
                         version.SetAttributeValue(VersionAttributeSize, fileSize.ToString());
                         version.SetAttributeValue(VersionAttributeChecksum, md5);
+                        version.SetAttributeValue(VersionAttributeID, versionID);
+                        version.SetAttributeValue(VersionAttributeLastVersion, lastVersion);
 
                         // Aggiungo la versione al file
                         file.Add(version);
@@ -454,7 +459,6 @@ namespace Server
         private void removeEmpty(XElement root)
         {
             var subdirsC = root.Elements(DirectoryElementName);
-
 
             foreach (var subdir in subdirsC)
             {

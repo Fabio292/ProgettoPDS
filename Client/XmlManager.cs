@@ -16,6 +16,10 @@ namespace Client
 
         public static readonly string VersionElementName = "version";
         public static readonly string VersionAttributeID = "id";
+        public static readonly string VersionAttributeLastModTime = "modTime";
+        public static readonly string VersionAttributeSize = "dim";
+        public static readonly string VersionAttributeChecksum = "md5";
+        public static readonly string VersionAttributeLastVersion = "lastVersion";
 
         public static readonly string FileElementName = "file";
         public static readonly string FileAttributeName = "name";
@@ -77,7 +81,7 @@ namespace Client
             // Nuovo nome della cartella
             string newName = newRelPath.Split(Constants.PathSeparator.ToCharArray(), StringSplitOptions.RemoveEmptyEntries).Last();
 
-            XElement dirElement = this.getDirectoryElement(oldRelPath);
+            XElement dirElement = getDirectoryElement(oldRelPath, this.GetRoot());
             
             // Modifico il nome dell'attributo
             dirElement.Attribute(DirectoryAttributeName).Value = newName;
@@ -93,7 +97,7 @@ namespace Client
             // Nome del nuovo file
             string newName = newRelPath.Split(Constants.PathSeparator.ToCharArray(), StringSplitOptions.RemoveEmptyEntries).Last();
 
-            XElement fileElement = this.getFileElement(oldRelPath);
+            XElement fileElement = getFileElement(oldRelPath, this.GetRoot());
             
             // Modifico il nome dell'attributo
             fileElement.Attribute(FileAttributeName).Value = newName;
@@ -106,7 +110,7 @@ namespace Client
         public void RefreshFile(FileAttributeHelper fa)
         {
             //FileInfo fInfo = new FileInfo(Utilis.RelativeToAbsPath(relPath));
-            XElement fileElement = this.getFileElement(fa.RelFilePath);
+            XElement fileElement = getFileElement(fa.RelFilePath, this.GetRoot());
             
             // Controllo se veramente modificare gli attributi (causa notifiche spurie)
             if(fileElement.Attribute(FileAttributeSize).Value.CompareTo(fa.Size.ToString()) == 0)
@@ -133,12 +137,12 @@ namespace Client
         public void DeleteElement(string absPath, List<string> deletedFiles)
         {
             string path = Utilis.AbsToRelativePath(absPath, Settings.SynchPath);
-            XElement el = this.getDirectoryElement(path);
+            XElement el = getDirectoryElement(path, this.GetRoot());
 
             // Controllo se ho effettivamente trovato l'elemento, se è null allora significa che è un file
             if (el == null)
             {
-                el = this.getFileElement(path);
+                el = getFileElement(path, this.GetRoot());
                 deletedFiles.Add(path);
             }
             else
@@ -156,7 +160,7 @@ namespace Client
         /// <param name="fa">Classe contenente gli attributi del file</param>
         public void CreateFile(FileAttributeHelper fa)
         {
-            XElement dir = this.getDirectoryElement(Path.GetDirectoryName(fa.RelFilePath));
+            XElement dir = getDirectoryElement(Path.GetDirectoryName(fa.RelFilePath), this.GetRoot());
 
             // Creo l'oggetto da inserire
             XElement file = new XElement(FileElementName);
@@ -186,7 +190,7 @@ namespace Client
             string parentDir = Path.GetDirectoryName(Utilis.AbsToRelativePath(absPath, Settings.SynchPath));
             //DirectoryInfo dirInfo = new DirectoryInfo(absPath);
 
-            XElement parentDirElem = this.getDirectoryElement(parentDir);
+            XElement parentDirElem = getDirectoryElement(parentDir, this.GetRoot());
 
             //creo l'elemento e lo inserisco nel padre
             XElement dirElem = new XElement(XmlManager.DirectoryElementName);
@@ -204,12 +208,12 @@ namespace Client
         /// Cerco all'interno del documento xml un elemento di tipo directory </summary>
         /// <param name="relPath">Il percorso RELATIVO alla directory per cui è stato generato il documento della directory da cercare</param>
         /// <returns></returns>
-        private XElement getDirectoryElement(string relPath)
+        private static XElement getDirectoryElement(string relPath, XElement root)
         {
             // Estraggo gli elementi del percorso per scendere nell'albero dell'xml
             string[] pathElement = relPath.Split(Constants.PathSeparator.ToCharArray(), StringSplitOptions.RemoveEmptyEntries);
 
-            XElement ret = this.GetRoot();
+            XElement ret = root;
 
             // prendo il FIRST dell'array ritornato dalla where perchè il filesystem mi garantisce l'univocità dei nomi
             // degli oggetti (directory o file) presenti in una directory
@@ -227,10 +231,10 @@ namespace Client
         /// Cerca nel documento corrente l'elemento corrispondente al file il cui percorso è passato come parametro </summary>
         /// <param name="relPath">Percorso RELATIVO alla cartella per cui è stato generato il documento</param>
         /// <returns>L'elemento XML corrispondente</returns>
-        private XElement getFileElement(string relPath)
+        private static XElement getFileElement(string relPath, XElement root)
         {
             XElement ret = null;
-            XElement dir = this.getDirectoryElement(Path.GetDirectoryName(relPath));
+            XElement dir = getDirectoryElement(Path.GetDirectoryName(relPath), root);
     
             ret = dir.Elements(FileElementName).Where(elt => elt.Attribute(FileAttributeName).Value == Path.GetFileName(relPath)).FirstOrDefault();
 
@@ -278,7 +282,7 @@ namespace Client
         {
             VersionInfo ret = null;
 
-            XElement fileE = this.getFileElement(relPath);
+            XElement fileE = getFileElement(relPath, this.GetRoot());
 
             if(fileE != null)
             {
@@ -296,9 +300,202 @@ namespace Client
             return ret;
         }
         #endregion
+        
+        #region CHECK DIFF
+        /// <summary>
+        /// Controllo due XML rendendo la lista dei file che devono essere RICHIESTI al server
+        /// </summary>
+        /// <param name="xmlClient">Xml della situazione del client</param>
+        /// <param name="xmlServer">Xml del server</param>
+        /// <param name="diffList">Lista dove andare ad inserire i file da richiedere</param>
+        /// <param name="deletedFilelist">Lista dei file cancellati del client per evitare di richiederli al server</param>
+        /// <param name="curPath">Vuoto</param>
+        public static void checkDiffClientServerTOClient(XElement xmlClient, XElement xmlServer, List<VersionInfo> diffList, List<string> deletedFilelist, string curPath = "")
+        {
+            bool getFileFromServer = true;
+
+            #region FILE DIFF
+            //Prendo le informazioni dagli xml per i FILE
+            var serverFilesList = xmlServer.Elements(XmlManager.FileElementName);
+
+            // Per ogni file sul server controllo di averlo uguale, altrimenti lo richiedo
+            foreach (XElement serverFileVersionListElement in serverFilesList)
+            {
+                getFileFromServer = true;
+
+                // Per ogni file del server controllo solo l'ultima versione
+                VersionInfo serverFileInfo = XmlManager.GetFileLastVersionInfo(serverFileVersionListElement, curPath);
+
+                // Recupero (se presente) l'elemento del file per il client
+                XElement clientFileElement = XmlManager.getFileElement(serverFileInfo.relPath, xmlClient);
+                if(clientFileElement != null)
+                {
+                    VersionInfo clientFileInfo = XmlManager.GetFileInfo(clientFileElement, curPath);
+
+                    //Controllo che il checksum sia uguale
+                    if(clientFileInfo.Md5.CompareTo(serverFileInfo.Md5) == 0)
+                    {
+                        //Controllo che la data del client sia più recente di quella del server
+                        if(DateTime.Compare(clientFileInfo.LastModTime, serverFileInfo.LastModTime) >= 0)
+                            getFileFromServer = false;
+                    }
+                }
+
+                if(getFileFromServer == true && !deletedFilelist.Contains(serverFileInfo.relPath))
+                {
+                    // File nuovo sul server, sul client non ce l'ho e non è uno dei file che ho cancellato ora
+                    // Lo aggiungo alla lista di file da richiedere
+                    diffList.Add(serverFileInfo); 
+                }
+            }
+            #endregion
+
+            #region FOLDER DIFF
+            // Prendo le informazioni dagli xml per le CARTELLE
+            var serverSubDirList = xmlServer.Elements(XmlManager.DirectoryElementName);
+
+            // Richiamo ricorsivamente per ogni sottocartella presente sul server
+            foreach (XElement serverSubDirElement in serverSubDirList)
+            {
+                string serverSubDirRelPath = curPath + Constants.PathSeparator + serverSubDirElement.Attribute(XmlManager.FileAttributeName).Value;
+
+                // Recupero l'elemento della cartella del client (se presente)
+                XElement clientSubDirElement = XmlManager.getDirectoryElement(serverSubDirRelPath, xmlClient);
+
+                if(clientSubDirElement == null)
+                {
+                    // Nel client non è presente quella sotto cartella, tutti gli elementi del server vanno scaricati
+                    XmlManager.getSubdirs(serverSubDirElement, diffList, serverSubDirRelPath, true);
+                }
+                else
+                {
+                    // Sotto cartella presente, ricorro
+                    XmlManager.checkDiffClientServerTOClient(clientSubDirElement, serverSubDirElement, diffList, deletedFilelist, serverSubDirRelPath);
+                }
+            }            
+            #endregion
+            
+            return;
+        }
+
+        /// <summary>
+        /// Controllo due XML rendendo la lista dei file che devono essere MANDATI al server
+        /// </summary>
+        /// <param name="xmlClient">Xml della situazione del client</param>
+        /// <param name="xmlServer">Xml del server</param>
+        /// <param name="diffList">Lista dove andare ad inserire i file da inviare</param>
+        /// <param name="curPath">Vuoto</param>
+        public static void checkDiffClientClientTOServer(XElement xmlClient, XElement xmlServer, List<VersionInfo> diffList, string curPath = "")
+        {
+            bool sendFileToServer = true;
+
+            #region FILE DIFF
+            //Prendo le informazioni dagli xml per i FILE
+            var clientFiles = xmlClient.Elements(XmlManager.FileElementName);
+
+            // Per ogni file sul client controllo di averlo uguale sul server, altrimenti lo mando
+            foreach (XElement clientFileElement in clientFiles)
+            {
+                sendFileToServer = true;
+
+                VersionInfo clientFileInfo = XmlManager.GetFileInfo(clientFileElement, curPath);
+
+                // Recupero (se presente) l'elemento del file per il server
+                XElement serverFileElement = XmlManager.getFileElement(clientFileInfo.relPath, xmlServer);
+
+                if(serverFileElement != null)
+                {
+                    List<VersionInfo> serverFileInfoList = XmlManager.GetFileVersionInfoList(serverFileElement, curPath, true);
+                    VersionInfo serverFileLastVersionInfo = XmlManager.GetFileLastVersionInfo(serverFileElement, curPath);
+
+                    // SE: lo stesso file è gia presente sul server (dimensione e md5 uguali in una delle versioni) NON INVIO
+                    foreach (VersionInfo serverFileInfo in serverFileInfoList)
+                    {
+                        if (clientFileInfo.Md5.CompareTo(serverFileInfo.Md5) == 0 && clientFileInfo.FileSize == serverFileInfo.FileSize)
+                        {
+                            sendFileToServer = false;
+                            break; // EVITO IL PING PONG DEI FILE DOPO UNA RESTORE!!!!!!!
+                        }
+                    }
+                }
+
+                if(sendFileToServer == true)
+                {
+                    // Siccome ho gia scaricato l'ultima versione in ordine temporale se arrivo qua sicuramente devo spedire il file
+                    diffList.Add(clientFileInfo);
+                }
+            }
+            #endregion
+
+            #region FOLDER DIFF
+            // Prendo le informazioni dagli xml per le CARTELLE
+            var clientSubDirList = xmlClient.Elements(XmlManager.DirectoryElementName);
+
+            // Richiamo ricorsivamente per ogni sottocartella presente sul server
+            foreach (XElement clientSubDirElement in clientSubDirList)
+            {
+                string clientSubDirRelPath = curPath + Constants.PathSeparator + clientSubDirElement.Attribute(XmlManager.FileAttributeName).Value;
+
+                // Recupero l'elemento della cartella del client (se presente)
+                XElement serverSubDirElement = XmlManager.getDirectoryElement(clientSubDirRelPath, xmlServer);
+
+                if (serverSubDirElement == null)
+                {
+                    // Nel client non è presente quella sotto cartella, tutti gli elementi del server vanno scaricati
+                    XmlManager.getSubdirs(clientSubDirElement, diffList, clientSubDirRelPath, false);
+                }
+                else
+                {
+                    // Sotto cartella presente, ricorro
+                    XmlManager.checkDiffClientClientTOServer(clientSubDirElement, serverSubDirElement, diffList, clientSubDirRelPath);
+                }
+            }
+            #endregion
+
+            return;
+        }
+
+        /// <summary>
+        /// funzione che elenca ricorsivamente tutti i files e tutte le cartelle presenti 
+        /// all'interno della cartella interessata (root)
+        /// </summary>
+        /// <param name="root">XElement cartella interessata</param>
+        /// <param name="refList">Lista degli elementi trovati</param>
+        /// <param name="curPath">path temporaneo</param>
+        /// <param name="versionElement">TRUE se sto analizzando XML del server (con versioni)</param>
+        public static void getSubdirs(XElement root, List<VersionInfo> refList, string curPath, bool versionElement)
+        {
+            var dirsList = root.Elements(XmlManager.DirectoryElementName);
+
+            IEnumerable<XElement> filesList = null;
+            if (versionElement == true)
+                filesList = root.Elements(XmlManager.VersionElementName);
+            else
+                filesList = root.Elements(XmlManager.FileElementName);
 
 
-        #region CONFRONTO XML
+            foreach (XElement fileElement in filesList)
+            {
+                VersionInfo newFileVersionInfo = null;
+
+                if (versionElement == true)
+                    newFileVersionInfo = XmlManager.GetFileLastVersionInfo(fileElement, curPath);
+                else
+                    newFileVersionInfo = XmlManager.GetFileInfo(fileElement, curPath);
+
+                refList.Add(newFileVersionInfo);
+            }
+
+            // Ricorro sulle sottocartelle
+            foreach (XElement dirElement in dirsList)
+            {
+                string serverSubDirRelPath = curPath + Constants.PathSeparator + dirElement.Attribute(XmlManager.FileAttributeName).Value;
+                getSubdirs(dirElement, refList, serverSubDirRelPath, versionElement);
+            }
+            
+        }
+
+
         /// <summary>
         /// controlla due XML rendendo l'elenco dei files che sono stati aggiunti/modificati
         /// l'elenco viene memorizzato in res (stringa che deve essere passata vuota)
@@ -308,143 +505,143 @@ namespace Client
         /// <param name="res">stringa (inizializzata vuota) che memorizza l'elenco dei path dei file diversi</param>
         /// <param name="path">stringa per memorizzare il path di ciascun file differente</param>
         /// <param name="mode"> modalità di utilizzo della funzione: 0 sinvio files client -> server, 1 invio files server -> client</param> >
-        public static int checkDiff(XElement rc, XElement rs, List<String> refList, ref string res, string path, Dictionary<String, VersionInfo> refMap, int mode, List<string> deletedFileList)
-        {
-            int counter = 0;
-            bool presente = false;
-            bool uguali = false;
-            bool cartellaesistente = false;
+        //public static int checkDiff(XElement rc, XElement rs, List<String> refList, ref string res, string path, Dictionary<String, VersionInfo> refMap, int mode, List<string> deletedFileList)
+        //{
+        //    int counter = 0;
+        //    bool presente = false;
+        //    bool uguali = false;
+        //    bool cartellaesistente = false;
 
 
-            var filesC = from e in rc.Elements(FileElementName)
-                         select e;
+        //    var filesC = from e in rc.Elements(FileElementName)
+        //                 select e;
 
-            var filesS = from eS in rs.Elements(FileElementName)
-                         select eS;
+        //    var filesS = from eS in rs.Elements(FileElementName)
+        //                 select eS;
 
-            var subdirsC = from cc in rc.Elements(DirectoryElementName)
-                           select cc;
+        //    var subdirsC = from cc in rc.Elements(DirectoryElementName)
+        //                   select cc;
 
-            var subdirsS = from cs in rs.Elements(DirectoryElementName)
-                           select cs;
+        //    var subdirsS = from cs in rs.Elements(DirectoryElementName)
+        //                   select cs;
 
 
-            foreach (XElement e in filesC)
-            {
-                ///cerco se e (cioè il file i-esimo) sia presente nella cartella considerata
-                presente = false;
-                uguali = false;
-                foreach (XElement eS in filesS)
-                {
-                    if (e.Attribute("name").ToString().CompareTo(eS.Attribute("name").ToString()) == 0)
-                    {
-                        //nome presente, controllo le date
-                        if(mode == 0)
-                        {
-                            if ((e.Attribute("md5").ToString().CompareTo(eS.Attribute("md5").ToString()) == 0) && (e.Attribute("modTime").ToString().CompareTo(eS.Attribute("modTime").ToString()) == 0))
-                            {
-                                //file identico in nome, in checksum e in data di ultima modifica
-                                uguali = true;
-                            }
-                        }
-                        else
-                        {
-                            try
-                            {
-                                DateTime sDt = Convert.ToDateTime(e.Attribute("modTime").Value);
-                                DateTime cDt = Convert.ToDateTime(eS.Attribute("modTime").Value);
+        //    foreach (XElement e in filesC)
+        //    {
+        //        ///cerco se e (cioè il file i-esimo) sia presente nella cartella considerata
+        //        presente = false;
+        //        uguali = false;
+        //        foreach (XElement eS in filesS)
+        //        {
+        //            if (e.Attribute("name").ToString().CompareTo(eS.Attribute("name").ToString()) == 0)
+        //            {
+        //                //nome presente, controllo le date
+        //                if(mode == 0)
+        //                {
+        //                    if ((e.Attribute("md5").ToString().CompareTo(eS.Attribute("md5").ToString()) == 0) && (e.Attribute("modTime").ToString().CompareTo(eS.Attribute("modTime").ToString()) == 0))
+        //                    {
+        //                        //file identico in nome, in checksum e in data di ultima modifica
+        //                        uguali = true;
+        //                    }
+        //                }
+        //                else
+        //                {
+        //                    try
+        //                    {
+        //                        DateTime sDt = Convert.ToDateTime(e.Attribute("modTime").Value);
+        //                        DateTime cDt = Convert.ToDateTime(eS.Attribute("modTime").Value);
 
-                                if (DateTime.Compare(cDt, sDt) >= 0)
-                                    uguali = true;
-                            }
-                            catch (Exception)
-                            {
-                                continue;
-                            }
-                        }
+        //                        if (DateTime.Compare(cDt, sDt) >= 0)
+        //                            uguali = true;
+        //                    }
+        //                    catch (Exception)
+        //                    {
+        //                        continue;
+        //                    }
+        //                }
 
-                        presente = true;
-                    }
-                }
+        //                presente = true;
+        //            }
+        //        }
 
-                if (presente == false)
-                {
-                    if (mode == 1)
-                    {
-                        //Controllo se non è presente nella lista file cancellati
-                        string deletedPath = e.Attribute("name").Value;
-                        if(deletedFileList.Contains(deletedPath) == true)
-                        {
-                            // Nella lista c'è il file che ho cancellato, quindi lo ignoro
-                            continue;
-                        }
-                    }
-                    else
-                    {
-                        //file nuovo
-                        counter++;
-                        res += "PUSH" + path + "\\" + e.Attribute("name").Value + "\n";
-                        if (mode == 0)
-                        {
-                            refList.Add(path + "\\" + e.Attribute("name").Value);
-                        }
-                        else if (mode == 1)
-                        {
-                            VersionInfo infos = new VersionInfo();
-                            infos.LastModTime = Convert.ToDateTime(e.Attribute("modTime").Value);
-                            infos.FileSize = Convert.ToInt32(e.Attribute("dim").Value);
-                            infos.Md5 = e.Attribute("md5").Value;
-                            refMap.Add(path + "\\" + e.Attribute("name").Value, infos);
-                        }
-                    }
+        //        if (presente == false)
+        //        {
+        //            if (mode == 1)
+        //            {
+        //                //Controllo se non è presente nella lista file cancellati
+        //                string deletedPath = e.Attribute("name").Value;
+        //                if(deletedFileList.Contains(deletedPath) == true)
+        //                {
+        //                    // Nella lista c'è il file che ho cancellato, quindi lo ignoro
+        //                    continue;
+        //                }
+        //            }
+        //            else
+        //            {
+        //                //file nuovo
+        //                counter++;
+        //                res += "PUSH" + path + "\\" + e.Attribute("name").Value + "\n";
+        //                if (mode == 0)
+        //                {
+        //                    refList.Add(path + "\\" + e.Attribute("name").Value);
+        //                }
+        //                else if (mode == 1)
+        //                {
+        //                    VersionInfo infos = new VersionInfo();
+        //                    infos.LastModTime = Convert.ToDateTime(e.Attribute("modTime").Value);
+        //                    infos.FileSize = Convert.ToInt32(e.Attribute("dim").Value);
+        //                    infos.Md5 = e.Attribute("md5").Value;
+        //                    refMap.Add(path + "\\" + e.Attribute("name").Value, infos);
+        //                }
+        //            }
                     
 
-                }
-                else if (uguali == false)
-                {
-                    //file modificato
-                    counter++;
-                    res += "PUSH* " + path + "\\" + e.Attribute("name").Value + "\n";
-                    if (mode == 0)
-                    {
-                        refList.Add(path + "\\" + e.Attribute("name").Value);
-                    }
-                    else if (mode == 1)
-                    {
-                        VersionInfo infos = new VersionInfo();
-                        infos.LastModTime = Convert.ToDateTime(e.Attribute("modTime").Value);
-                        infos.FileSize = Convert.ToInt32(e.Attribute("dim").Value);
-                        infos.Md5 = e.Attribute("md5").Value;
-                        refMap.Add(path + "\\" + e.Attribute("name").Value, infos);
-                    }
-                }
-            }
+        //        }
+        //        else if (uguali == false)
+        //        {
+        //            //file modificato
+        //            counter++;
+        //            res += "PUSH* " + path + "\\" + e.Attribute("name").Value + "\n";
+        //            if (mode == 0)
+        //            {
+        //                refList.Add(path + "\\" + e.Attribute("name").Value);
+        //            }
+        //            else if (mode == 1)
+        //            {
+        //                VersionInfo infos = new VersionInfo();
+        //                infos.LastModTime = Convert.ToDateTime(e.Attribute("modTime").Value);
+        //                infos.FileSize = Convert.ToInt32(e.Attribute("dim").Value);
+        //                infos.Md5 = e.Attribute("md5").Value;
+        //                refMap.Add(path + "\\" + e.Attribute("name").Value, infos);
+        //            }
+        //        }
+        //    }
 
-            ///chiamo ricorsivamente la funzione per ogni sottocartella che sia presente anche lato server
-            foreach (XElement cc in subdirsC)
-            {
-                cartellaesistente = false;
-                foreach (XElement cs in subdirsS)
-                {
-                    if (cc.Attribute("name").ToString().CompareTo(cs.Attribute("name").ToString()) == 0)
-                    {
-                        //cartella esistente, ricorro
-                        cartellaesistente = true;
-                        counter += checkDiff(cc, cs, refList, ref res, path + "\\" + cc.Attribute("name").Value, refMap, mode, deletedFileList);
-                    }
-                }
-                if (cartellaesistente == false)
-                {
-                    //cartella inesistente, stampo e NON RICORRO
-                    //res += ("cartella NUOVA " + path + "\\" + cc.Attribute("name").Value + "\n");
+        //    ///chiamo ricorsivamente la funzione per ogni sottocartella che sia presente anche lato server
+        //    foreach (XElement cc in subdirsC)
+        //    {
+        //        cartellaesistente = false;
+        //        foreach (XElement cs in subdirsS)
+        //        {
+        //            if (cc.Attribute("name").ToString().CompareTo(cs.Attribute("name").ToString()) == 0)
+        //            {
+        //                //cartella esistente, ricorro
+        //                cartellaesistente = true;
+        //                counter += checkDiff(cc, cs, refList, ref res, path + "\\" + cc.Attribute("name").Value, refMap, mode, deletedFileList);
+        //            }
+        //        }
+        //        if (cartellaesistente == false)
+        //        {
+        //            //cartella inesistente, stampo e NON RICORRO
+        //            //res += ("cartella NUOVA " + path + "\\" + cc.Attribute("name").Value + "\n");
 
-                    //TO DO cercare una funzione che renda il path completo dato un XElement, metterla come stringa di partenza al posto di path
-                    counter += getSubdirs(cc, refList, ref res, path + "\\" + cc.Attribute("name").Value, refMap, mode);
-                }
-            }
+        //            //TO DO cercare una funzione che renda il path completo dato un XElement, metterla come stringa di partenza al posto di path
+        //            counter += getSubdirs(cc, refList, ref res, path + "\\" + cc.Attribute("name").Value, refMap, mode);
+        //        }
+        //    }
 
-            return counter;
-        }
+        //    return counter;
+        //}
 
         /// <summary>
         /// funzione che elenca ricorsivamente tutti i files e tutte le cartelle presenti 
@@ -453,40 +650,41 @@ namespace Client
         /// <param name="root">XElement cartella interessata</param>
         /// <param name="subElements">stringa che memorizza l'elenco dei path dei file diversi</param>
         /// <param name="path">path temporaneo</param>
-        public static int getSubdirs(XElement root, List<String> refList, ref string subElements, string path, Dictionary<String, VersionInfo> refMap, int mode)
-        {
-            int counter = 0;
-            var files = from f in root.Elements(FileElementName)
-                        select f;
-            var dirs = from d in root.Elements(DirectoryElementName)
-                       select d;
+        //public static int getSubdirs(XElement root, List<String> refList, ref string subElements, string path, Dictionary<String, VersionInfo> refMap, int mode)
+        //{
+        //    int counter = 0;
+        //    var files = from f in root.Elements(FileElementName)
+        //                select f;
+        //    var dirs = from d in root.Elements(DirectoryElementName)
+        //               select d;
 
-            foreach (XElement e in files)
-            {
-                counter++;
-                subElements += "PUSH" + path + "\\" + e.Attribute("name").Value + "\n";
-                if (mode == 0)
-                {
-                    refList.Add(path + "\\" + e.Attribute("name").Value);
-                }
-                else if (mode == 1)
-                {
-                    VersionInfo infos = new VersionInfo();
-                    infos.LastModTime = Convert.ToDateTime(e.Attribute("modTime").Value);
-                    infos.FileSize = Convert.ToInt32(e.Attribute("dim").Value);
-                    infos.Md5 = e.Attribute("md5").Value;
-                    refMap.Add(path + "\\" + e.Attribute("name").Value, infos);
-                }
+        //    foreach (XElement e in files)
+        //    {
+        //        counter++;
+        //        subElements += "PUSH" + path + "\\" + e.Attribute("name").Value + "\n";
+        //        if (mode == 0)
+        //        {
+        //            refList.Add(path + "\\" + e.Attribute("name").Value);
+        //        }
+        //        else if (mode == 1)
+        //        {
+        //            VersionInfo infos = new VersionInfo();
+        //            infos.LastModTime = Convert.ToDateTime(e.Attribute("modTime").Value);
+        //            infos.FileSize = Convert.ToInt32(e.Attribute("dim").Value);
+        //            infos.Md5 = e.Attribute("md5").Value;
+        //            refMap.Add(path + "\\" + e.Attribute("name").Value, infos);
+        //        }
 
-            }
-            foreach (XElement e in dirs)
-            {
-                //subElements += path + "\\" + e.Attribute("name").Value + "\n";
-                counter += getSubdirs(e, refList, ref subElements, path + "\\" + e.Attribute("name").Value, refMap, mode);
-            }
+        //    }
+        //    foreach (XElement e in dirs)
+        //    {
+        //        //subElements += path + "\\" + e.Attribute("name").Value + "\n";
+        //        counter += getSubdirs(e, refList, ref subElements, path + "\\" + e.Attribute("name").Value, refMap, mode);
+        //    }
 
-            return counter;
-        }
+        //    return counter;
+        //}
+        
         #endregion
 
        
@@ -614,6 +812,145 @@ namespace Client
                 
 
         #region GETTER
+        /// <summary>
+        /// Ottengo la struttura con gli attributi da un FILE
+        /// </summary>
+        public static VersionInfo GetFileInfo(XElement fileElement, string curPath)
+        {
+            VersionInfo ret = new VersionInfo()
+            {
+                FileSize = -1,
+                Md5 = "",
+                relPath = "",
+                versionID = -1
+            };
+
+            try
+            {
+                //Controllo se è un vero file (senza versioni)
+                if (fileElement.Elements(XmlManager.VersionElementName).Count() > 0)
+                    throw new Exception("GetFileInfo richiamata su elemento con versioni");
+
+                ret.FileSize = Convert.ToInt32(fileElement.Attribute(XmlManager.FileAttributeSize).Value);
+                ret.Md5 = fileElement.Attribute(XmlManager.FileAttributeChecksum).Value;
+                ret.LastModTime = DateTime.Parse(fileElement.Attribute(XmlManager.FileAttributeLastModTime).Value);
+                ret.relPath = curPath + Constants.PathSeparator + fileElement.Attribute(XmlManager.FileAttributeName).Value;
+                
+            }
+            catch (Exception e)
+            {
+                StackTrace st = new StackTrace(e, true);
+                StackFrame sf = Utilis.GetFirstValidFrame(st);
+
+                Logger.Error("[" + Path.GetFileName(sf.GetFileName()) + "(" + sf.GetFileLineNumber() + ")]: " + e.Message);
+            }
+
+
+
+            return ret;
+        }
+
+        /// <summary>
+        /// Ottengo la struttura con gli attributi da una lista di versioni prendendo l'ultima (lastVersion = 1)
+        /// </summary>
+        public static VersionInfo GetFileLastVersionInfo(XElement fileElement, string curPath)
+        {
+            VersionInfo ret = new VersionInfo()
+            {
+                FileSize = -1,
+                Md5 = "",
+                relPath = "",
+                versionID = -1
+            };
+
+            try
+            {
+                //Controllo se è un file con versioni
+                if (fileElement.Elements(XmlManager.VersionElementName).Count() < 1)
+                    throw new Exception("GetFileLastVersionInfo richiamata su elemento senza versioni");
+
+                var versionList = fileElement.Elements(XmlManager.VersionElementName);
+
+                foreach (var versionElement in versionList)
+                {
+                    // Controllo se è l'ultima versione
+                    if(versionElement.Attribute(XmlManager.VersionAttributeLastVersion).Value.CompareTo("true") == 0)
+                    {
+                        ret.FileSize = Convert.ToInt32(versionElement.Attribute(XmlManager.FileAttributeSize).Value);
+                        ret.Md5 = versionElement.Attribute(XmlManager.FileAttributeChecksum).Value;
+                        ret.LastModTime = DateTime.Parse(versionElement.Attribute(XmlManager.FileAttributeLastModTime).Value);
+                        ret.relPath = curPath + Constants.PathSeparator + fileElement.Attribute(XmlManager.FileAttributeName).Value;
+                        ret.versionID = Convert.ToInt32(versionElement.Attribute(XmlManager.VersionAttributeID).Value);
+
+                        return ret;
+                    }
+                }
+
+            }
+            catch (Exception e)
+            {
+                StackTrace st = new StackTrace(e, true);
+                StackFrame sf = Utilis.GetFirstValidFrame(st);
+
+                Logger.Error("[" + Path.GetFileName(sf.GetFileName()) + "(" + sf.GetFileLineNumber() + ")]: " + e.Message);
+            }
+
+
+
+            return ret;
+        }
+
+        /// <summary>
+        /// Ottengo la lista degli attributi di tutte le versioni
+        /// </summary>
+        public static List<VersionInfo> GetFileVersionInfoList(XElement fileElement, string curPath, bool sortLastModTime = false)
+        {
+            List<VersionInfo> ret = new List<VersionInfo>();
+
+            try
+            {
+                //Controllo se è un file con versioni
+                if (fileElement.Elements(XmlManager.VersionElementName).Count() < 1)
+                    throw new Exception("GetFileLastVersionInfo richiamata su elemento senza versioni");
+
+                var versionList = fileElement.Elements(XmlManager.VersionElementName);
+
+                foreach (var versionElement in versionList)
+                {
+                    // Aggiungo tutte le versioni
+                    VersionInfo vInfo = new VersionInfo()
+                    {
+                        FileSize = -1,
+                        Md5 = "",
+                        relPath = "",
+                        versionID = -1
+                    };
+
+                    vInfo.FileSize = Convert.ToInt32(versionElement.Attribute(XmlManager.FileAttributeSize).Value);
+                    vInfo.Md5 = versionElement.Attribute(XmlManager.FileAttributeChecksum).Value;
+                    vInfo.LastModTime = DateTime.Parse(versionElement.Attribute(XmlManager.FileAttributeLastModTime).Value);
+                    vInfo.relPath = curPath + Constants.PathSeparator + fileElement.Attribute(XmlManager.FileAttributeName).Value;
+                    vInfo.versionID = Convert.ToInt32(versionElement.Attribute(XmlManager.VersionAttributeID).Value);
+
+                    ret.Add(vInfo);
+                }
+            }
+            catch (Exception e)
+            {
+                StackTrace st = new StackTrace(e, true);
+                StackFrame sf = Utilis.GetFirstValidFrame(st);
+
+                Logger.Error("[" + Path.GetFileName(sf.GetFileName()) + "(" + sf.GetFileLineNumber() + ")]: " + e.Message);
+            }
+
+            if(sortLastModTime)
+                ret.Sort((a, b) => a.LastModTime.CompareTo(b.LastModTime)); // TODO TESTARE
+
+            return ret;
+        }
+
+
+
         public static XElement GetRoot(XDocument xDoc)
         {
             return xDoc.Root;
