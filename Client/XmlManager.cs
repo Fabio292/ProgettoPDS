@@ -20,6 +20,7 @@ namespace Client
         public static readonly string VersionAttributeSize = "dim";
         public static readonly string VersionAttributeChecksum = "md5";
         public static readonly string VersionAttributeLastVersion = "lastVersion";
+        public static readonly string VersionAttributeDeleted = "deleted";
 
         public static readonly string FileElementName = "file";
         public static readonly string FileAttributeName = "name";
@@ -143,11 +144,14 @@ namespace Client
             if (el == null)
             {
                 el = getFileElement(path, this.GetRoot());
-                deletedFiles.Add(path);
+                deletedFiles.Add(@"\" + path);
             }
             else
             {
                 // Richiamo sulla cartella
+                if (path.StartsWith(@"\") == false)
+                    path = Constants.PathSeparator + path;
+
                 searchFileRecursive(el, path, deletedFiles);
             }
 
@@ -326,22 +330,26 @@ namespace Client
                 // Per ogni file del server controllo solo l'ultima versione
                 VersionInfo serverFileInfo = XmlManager.GetFileLastVersionInfo(serverFileVersionListElement, curPath);
 
+                // Controllo che non sia cancellato, altrimenti passo oltre
+                if (serverFileInfo.deleted == true)
+                    continue;
+
+                // Se il file corrente è nella lista dei file cancellati passo oltre
+                if (deletedFilelist.Contains(serverFileInfo.relPath) == true)
+                    continue;
+
                 // Recupero (se presente) l'elemento del file per il client
-                XElement clientFileElement = XmlManager.getFileElement(serverFileInfo.relPath, xmlClient);
+                XElement clientFileElement = XmlManager.getFileElement(Path.GetFileName(serverFileInfo.relPath), xmlClient);
                 if(clientFileElement != null)
                 {
                     VersionInfo clientFileInfo = XmlManager.GetFileInfo(clientFileElement, curPath);
 
-                    //Controllo che il checksum sia uguale
-                    if(clientFileInfo.Md5.CompareTo(serverFileInfo.Md5) == 0)
-                    {
-                        //Controllo che la data del client sia più recente di quella del server
-                        if(DateTime.Compare(clientFileInfo.LastModTime, serverFileInfo.LastModTime) >= 0)
-                            getFileFromServer = false;
-                    }
+                    //Controllo che il checksum sia uguale oppure che il mio file sia più recente
+                    if(clientFileInfo.Md5.CompareTo(serverFileInfo.Md5) == 0 || DateTime.Compare(clientFileInfo.LastModTime, serverFileInfo.LastModTime) >= 0)
+                        getFileFromServer = false;
                 }
 
-                if(getFileFromServer == true && !deletedFilelist.Contains(serverFileInfo.relPath))
+                if(getFileFromServer == true)
                 {
                     // File nuovo sul server, sul client non ce l'ho e non è uno dei file che ho cancellato ora
                     // Lo aggiungo alla lista di file da richiedere
@@ -360,12 +368,16 @@ namespace Client
                 string serverSubDirRelPath = curPath + Constants.PathSeparator + serverSubDirElement.Attribute(XmlManager.FileAttributeName).Value;
 
                 // Recupero l'elemento della cartella del client (se presente)
-                XElement clientSubDirElement = XmlManager.getDirectoryElement(serverSubDirRelPath, xmlClient);
+                XElement clientSubDirElement = XmlManager.getDirectoryElement(Path.GetFileName(serverSubDirRelPath), xmlClient);
 
                 if(clientSubDirElement == null)
                 {
                     // Nel client non è presente quella sotto cartella, tutti gli elementi del server vanno scaricati
-                    XmlManager.getSubdirs(serverSubDirElement, diffList, serverSubDirRelPath, true);
+                    XmlManager.getSubdirs(serverSubDirElement, diffList, serverSubDirRelPath, true, deletedFilelist);
+
+                    // cancello tutti gli elementi che risultano Deleted dal server
+                    diffList.RemoveAll(vInfo => vInfo.deleted == true);
+                    
                 }
                 else
                 {
@@ -401,7 +413,7 @@ namespace Client
                 VersionInfo clientFileInfo = XmlManager.GetFileInfo(clientFileElement, curPath);
 
                 // Recupero (se presente) l'elemento del file per il server
-                XElement serverFileElement = XmlManager.getFileElement(clientFileInfo.relPath, xmlServer);
+                XElement serverFileElement = XmlManager.getFileElement(Path.GetFileName(clientFileInfo.relPath), xmlServer);
 
                 if(serverFileElement != null)
                 {
@@ -437,7 +449,7 @@ namespace Client
                 string clientSubDirRelPath = curPath + Constants.PathSeparator + clientSubDirElement.Attribute(XmlManager.FileAttributeName).Value;
 
                 // Recupero l'elemento della cartella del client (se presente)
-                XElement serverSubDirElement = XmlManager.getDirectoryElement(clientSubDirRelPath, xmlServer);
+                XElement serverSubDirElement = XmlManager.getDirectoryElement(Path.GetFileName(clientSubDirRelPath), xmlServer);
 
                 if (serverSubDirElement == null)
                 {
@@ -463,25 +475,30 @@ namespace Client
         /// <param name="refList">Lista degli elementi trovati</param>
         /// <param name="curPath">path temporaneo</param>
         /// <param name="versionElement">TRUE se sto analizzando XML del server (con versioni)</param>
-        public static void getSubdirs(XElement root, List<VersionInfo> refList, string curPath, bool versionElement)
+        public static void getSubdirs(XElement root, List<VersionInfo> refList, string curPath, bool versionElement, List<string> deletedFileList = null)
         {
             var dirsList = root.Elements(XmlManager.DirectoryElementName);
 
             IEnumerable<XElement> filesList = null;
-            if (versionElement == true)
-                filesList = root.Elements(XmlManager.VersionElementName);
-            else
+            //if (versionElement == true)
+            //    filesList = root.Elements(XmlManager.VersionElementName);
+            //else
                 filesList = root.Elements(XmlManager.FileElementName);
 
 
             foreach (XElement fileElement in filesList)
             {
+
                 VersionInfo newFileVersionInfo = null;
 
                 if (versionElement == true)
                     newFileVersionInfo = XmlManager.GetFileLastVersionInfo(fileElement, curPath);
                 else
                     newFileVersionInfo = XmlManager.GetFileInfo(fileElement, curPath);
+                
+                //Se il file è stato cancellato lo ignoro
+                if (deletedFileList != null && deletedFileList.Contains(newFileVersionInfo.relPath) == true)
+                    continue;
 
                 refList.Add(newFileVersionInfo);
             }
@@ -490,7 +507,7 @@ namespace Client
             foreach (XElement dirElement in dirsList)
             {
                 string serverSubDirRelPath = curPath + Constants.PathSeparator + dirElement.Attribute(XmlManager.FileAttributeName).Value;
-                getSubdirs(dirElement, refList, serverSubDirRelPath, versionElement);
+                getSubdirs(dirElement, refList, serverSubDirRelPath, versionElement, deletedFileList);
             }
             
         }
@@ -860,7 +877,8 @@ namespace Client
                 FileSize = -1,
                 Md5 = "",
                 relPath = "",
-                versionID = -1
+                versionID = -1,
+                deleted = false
             };
 
             try
@@ -881,6 +899,7 @@ namespace Client
                         ret.LastModTime = DateTime.Parse(versionElement.Attribute(XmlManager.FileAttributeLastModTime).Value);
                         ret.relPath = curPath + Constants.PathSeparator + fileElement.Attribute(XmlManager.FileAttributeName).Value;
                         ret.versionID = Convert.ToInt32(versionElement.Attribute(XmlManager.VersionAttributeID).Value);
+                        ret.deleted = Convert.ToBoolean(versionElement.Attribute(XmlManager.VersionAttributeDeleted).Value);
 
                         return ret;
                     }
@@ -923,7 +942,8 @@ namespace Client
                         FileSize = -1,
                         Md5 = "",
                         relPath = "",
-                        versionID = -1
+                        versionID = -1,
+                        deleted = false
                     };
 
                     vInfo.FileSize = Convert.ToInt32(versionElement.Attribute(XmlManager.FileAttributeSize).Value);
@@ -931,6 +951,7 @@ namespace Client
                     vInfo.LastModTime = DateTime.Parse(versionElement.Attribute(XmlManager.FileAttributeLastModTime).Value);
                     vInfo.relPath = curPath + Constants.PathSeparator + fileElement.Attribute(XmlManager.FileAttributeName).Value;
                     vInfo.versionID = Convert.ToInt32(versionElement.Attribute(XmlManager.VersionAttributeID).Value);
+                    vInfo.deleted = Convert.ToBoolean(versionElement.Attribute(XmlManager.VersionAttributeDeleted).Value);
 
                     ret.Add(vInfo);
                 }

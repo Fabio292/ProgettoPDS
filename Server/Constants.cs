@@ -100,7 +100,7 @@ namespace Server
         /// <summary>
         /// Lunghezza della stringa generata a random per la ricezione file
         /// </summary>
-        public const int RNDNameLength = 10;
+        public const int RNDNameLength = 16;
 
         /// <summary>
         /// Timeout dei socket

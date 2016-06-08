@@ -20,6 +20,7 @@ namespace Server
         public static readonly string VersionAttributeSize = "dim";
         public static readonly string VersionAttributeChecksum = "md5";
         public static readonly string VersionAttributeLastVersion = "lastVersion";
+        public static readonly string VersionAttributeDeleted = "deleted";
 
         public static readonly string FileElementName = "file";
         public static readonly string FileAttributeName = "name";
@@ -71,7 +72,6 @@ namespace Server
             using (SQLiteCommand sqlCmd = conn.CreateCommand())
             {
                 sqlCmd.CommandText = @"SELECT PathClient, MD5, LastModTime, Size FROM Versioni WHERE UID = @_UID AND VersionID = @_versionID AND Deleted = 0;";
-                //sqlCmd.Parameters.AddWithValue("@_latestV", latestVersionId);
                 sqlCmd.Parameters.AddWithValue("@_UID", UID);
                 sqlCmd.Parameters.AddWithValue("@_versionID", versionID);
 
@@ -156,7 +156,7 @@ namespace Server
 
             using (SQLiteCommand sqlCmd = conn.CreateCommand())
             {
-                sqlCmd.CommandText = @"SELECT PathClient, MD5, LastModTime, Size, VersionID, LastVersion FROM Versioni WHERE UID = @_UID ORDER BY VersionID DESC;";
+                sqlCmd.CommandText = @"SELECT PathClient, MD5, LastModTime, Size, VersionID, LastVersion, Deleted FROM Versioni WHERE UID = @_UID ORDER BY VersionID DESC;";
                 //sqlCmd.Parameters.AddWithValue("@_latestV", latestVersionId);
                 sqlCmd.Parameters.AddWithValue("@_UID", UID);
 
@@ -168,6 +168,7 @@ namespace Server
                     int fileSize;
                     int versionID;
                     bool lastVersion;
+                    bool deleted;
 
                     while (reader.Read())
                     {
@@ -178,6 +179,7 @@ namespace Server
                         fileSize = reader.GetInt32(3);
                         versionID = reader.GetInt32(4);
                         lastVersion = reader.GetBoolean(5);
+                        deleted = reader.GetBoolean(6);
 
                         string fname = Path.GetFileName(relPath);
                         string[] dirPath = Path.GetDirectoryName(relPath).Split(Constants.PathSeparator.ToCharArray(), StringSplitOptions.RemoveEmptyEntries);
@@ -232,6 +234,7 @@ namespace Server
                         version.SetAttributeValue(VersionAttributeChecksum, md5);
                         version.SetAttributeValue(VersionAttributeID, versionID);
                         version.SetAttributeValue(VersionAttributeLastVersion, lastVersion);
+                        version.SetAttributeValue(VersionAttributeDeleted, deleted);
 
                         // Aggiungo la versione al file
                         file.Add(version);

@@ -279,6 +279,11 @@ namespace Client
                     }
                     #endregion
 
+                    // Mi sincronizzo col server
+                    Command k = Utilis.GetCmdSync(this.conn); 
+                    if (k == null || !(k.kmd == CmdType.ok))
+                        throw new Exception("Aspettavo un comando OK, ricevuto nulla o tipo errato");
+
                     #region SYNC SERVER -> CLIENT
                     //fase A: il client guarda se il server abbia dei files aggiornati o nuovi
                     //li memorizza in una lista e li richiede al server
@@ -295,7 +300,11 @@ namespace Client
                         Utilis.SendCmdSync(conn, numFiles);
                     }
                     #endregion
-                    
+
+                    k = Utilis.GetCmdSync(this.conn);
+                    if (k == null || !(k.kmd == CmdType.ok))
+                        throw new Exception("Aspettavo un comando OK, ricevuto nulla o tipo errato");
+
                     #region SYNC CLIENT -> SERVER
                     //fase B: il client seleziona i files non memorizzati dal server (nuovi o modificati)
                     //li memorizza in una lista e li invia al server
@@ -318,10 +327,7 @@ namespace Client
                     // Chiudo la sessione di sincronizzazione
                     resp = Utilis.GetCmdSync(conn);
                     if (resp == null || resp.kmd != CmdType.ok)
-                    {
-                        Logger.Error("errore fine synch");
-                        return;
-                    }
+                        throw new Exception("errore fine synch");
 
                     // Mando l'xml
                     //XmlCommand lastXml = new XmlCommand(xmlClient, authToken);
@@ -332,10 +338,17 @@ namespace Client
                     Logger.Info("Synch terminata");
                     #endregion
 
+                    deletedFileList.Clear();
+
                 }
             }
             catch (Exception e)
             {
+                StackTrace st = new StackTrace(e, true);
+                StackFrame sf = Utilis.GetFirstValidFrame(st);
+
+                Logger.Error("[" + Path.GetFileName(sf.GetFileName()) + "(" + sf.GetFileLineNumber() + ")]: " + e.Message);
+
                 throw e;
             }
             finally
@@ -360,7 +373,7 @@ namespace Client
             foreach (string filePath in deletedFileList)
             {
                 // Invio le informazioni sul file
-                Command deletedFile = new Command(CmdType.deletedFile, @"\" + filePath);
+                Command deletedFile = new Command(CmdType.deletedFile, filePath);
                 Utilis.SendCmdSync(conn, deletedFile);
 
                 Logger.Debug("Ho inviato cancellazione file " + filePath);
@@ -423,6 +436,10 @@ namespace Client
                 // Se il file esiste gia lo cancello
                 if (File.Exists(destPath) == true)
                     File.Delete(destPath);
+
+                // In ogni caso il percorso deve esistere
+                if (Directory.Exists(Path.GetDirectoryName(destPath)) == false)
+                    Directory.CreateDirectory(Path.GetDirectoryName(destPath));
 
                 Utilis.GetFile(conn, destPath, fileToGetInfo.FileSize);
                 //TODO modificare la data di ultima modifica del file ?

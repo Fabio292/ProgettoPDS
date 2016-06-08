@@ -576,12 +576,14 @@ namespace Server
                     ServerListener.getDeletedFiles(client, connessione, UID);
                     Logger.Info("File cancellati ricevuti");
 
+                    ServerListener.sendOk(client);
 
                     //Invio file nuovi al client
                     int lastVersionID = 0;
                     ServerListener.sendFilesRequested(client, connessione, UID, ref lastVersionID);
                     Logger.Info("File modificati inviati");
 
+                    ServerListener.sendOk(client);
 
                     // Ricevo le modifiche dal client      
                     lastVersionID = 0;
@@ -630,15 +632,15 @@ namespace Server
                 Logger.Debug("Cancellato file " + relFilePath);
 
                 //Prendo l'ultima versione del file
-                int lastVersion = ServerListener.getLastVersionForFile(UID, relFilePath, connessione);
+                //int lastVersion = ServerListener.getLastVersionForFile(UID, relFilePath, connessione);
 
                 //segno nel db che e cancellato
                 using (SQLiteCommand sqlCmd = connessione.CreateCommand())
                 {
-                    sqlCmd.CommandText = @"UPDATE Versioni SET Deleted = @_deleted WHERE UID = @_UID AND VersionID = @_version AND PathClient = @_pathClient;";
+                    sqlCmd.CommandText = @"UPDATE Versioni SET Deleted = @_deleted WHERE UID = @_UID AND PathClient = @_pathClient;";
                     sqlCmd.Parameters.AddWithValue("@_deleted", true);
                     sqlCmd.Parameters.AddWithValue("@_UID", UID);
-                    sqlCmd.Parameters.AddWithValue("@_version", lastVersion);
+                    //sqlCmd.Parameters.AddWithValue("@_version", lastVersion);
                     sqlCmd.Parameters.AddWithValue("@_pathClient", relFilePath);
 
                     sqlCmd.ExecuteNonQuery();
@@ -806,7 +808,7 @@ namespace Server
                     FileInfoCommand info = new FileInfoCommand(Utilis.GetCmdSync(client));
 
                     // Genero il nome univoco per il file
-                    string destFileName = Utilis.Md5String(Path.GetFileName(info.RelFilePath)) + "_"
+                    string destFileName = Utilis.Md5String(info.RelFilePath) + "_"
                         + Utilis.RandomString(Constants.RNDNameLength) + "." + latestVersionId;
 
                     // Ricevo e salvo il file
@@ -997,14 +999,31 @@ namespace Server
         /// <param name="client">Connessione TCP al client</param>
         private static void sendXmlDigest(TcpClient client, int UID)
         {
-            //string xmlPath = Constants.PathServerFile + Constants.PathSeparator + UID + ".xml";
-            //if (!File.Exists(xmlPath))
-            //    XmlManager.InitializeXmlFile(xmlPath);
 
             using (SQLiteConnection cnn = new SQLiteConnection(DB.GetConnectionString()))
             {
                 cnn.Open();
-                XmlManager xml = new XmlManager(cnn, UID);
+                int lastV;
+                using (SQLiteCommand sqlCmd = cnn.CreateCommand())
+                {
+                    sqlCmd.CommandText = @"SELECT MAX(VersionID) FROM Versioni WHERE UID = @_UID";
+                    sqlCmd.Parameters.AddWithValue("@_UID", UID);
+                    try
+                    {
+                        lastV = Convert.ToInt32(sqlCmd.ExecuteScalar());
+                    }
+                    catch (Exception)
+                    {
+                        lastV = -1;
+                    }
+
+                }
+
+                XmlManager xml = null;
+                if (lastV != -1)
+                    xml = new XmlManager(cnn, UID, lastV);
+                else
+                    xml = new XmlManager(cnn, UID);
 
                 XmlDigestCommand digest = new XmlDigestCommand(xml, Constants.ServerAuthToken);
                 Utilis.SendCmdSync(client, digest);

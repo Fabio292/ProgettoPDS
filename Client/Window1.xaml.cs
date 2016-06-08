@@ -1006,7 +1006,7 @@ namespace Client
             try
             {
                 client.ClientSync(XMLInstance, authToken, deletedFilesList);
-                deletedFilesList.Clear();
+                
             }
             catch (Exception ex)
             {
@@ -1034,6 +1034,7 @@ namespace Client
         public int versionID;
 
         public string relPath;
+        public bool deleted;
     }
     
     public enum TabIndexEnum : int
