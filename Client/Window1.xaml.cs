@@ -30,7 +30,11 @@ namespace Client
 
         private Dictionary<string, List<VersionInfo>> remoteVersionMap = new Dictionary<string, List<VersionInfo>>();
         private List<string> deletedFilesList = new List<string>();
-               
+
+        static string lastXmlDigest = "";
+
+        private Task xmlGenerationTask;
+        static bool userRequestShutdown = false;
         // TIMER
         static System.Timers.Timer SynchTimer;
         
@@ -50,23 +54,8 @@ namespace Client
         public Window1()
         {
             InitializeComponent();
-            
-            MyNotifyIcon = new System.Windows.Forms.NotifyIcon();
-            MyNotifyIcon.Icon = new System.Drawing.Icon(Constants.IcoPath);
 
-            MyNotifyIcon.MouseDoubleClick += new System.Windows.Forms.MouseEventHandler(MyNotifyIcon_MouseDoubleClick);
-            //MyNotifyIcon.MouseClick += new System.Windows.Forms.MouseEventHandler(MyNotifyIcon_MouseClick);
-            //MyNotifyIcon.Click += new System.Windows.Forms.MouseEventHandler(NotifyIcon_NotificationAreaClick);
-
-            //gestione menu tray
-            menu_tray = new System.Windows.Forms.ContextMenu();
-            menu_tray.MenuItems.Add(0, new System.Windows.Forms.MenuItem("Apri", new System.EventHandler(Show_Click)));
-            menu_tray.MenuItems.Add(1, new System.Windows.Forms.MenuItem("Chiudi applicazione", new System.EventHandler(Exit_Click)));
-            MyNotifyIcon.ContextMenu = menu_tray;
-
-
-            MyNotifyIcon.Visible = true;
-            statusInSynch = false;
+            ConfigureSystemTray();
 
             //foreach (TabItem item in TABControl.Items)
             //{
@@ -88,12 +77,6 @@ namespace Client
 
             ConfigureWatcher();
             ConfigureTimer();
-
-            // genero l'xml
-            // TODO fare in un thread a parte?
-            XMLInstance = new XmlManager(new DirectoryInfo(Settings.SynchPath));
-            XMLInstance.SaveToFile(Constants.XmlSavePath + @"\x.xml");
-            printXmlToTreeView();
 
             // Avvio timer e watcher
             StartWatcher();
@@ -120,15 +103,27 @@ namespace Client
             NUDTimerValue.Value = Settings.TimerFrequency / 1000; // Converto i ms in secondi
             TXTServerIP.Text = Settings.ServerIP;
             TXTServerPort.Text = Settings.ServerPort.ToString();
-            
+
+            // Genero l'xml in un task che raccoglierò successivamente
+            Logger.Info("Lancio xml");
+            xmlGenerationTask = Task.Run(() =>
+            {
+                XMLInstance = new XmlManager(new DirectoryInfo(Settings.SynchPath));
+            });
+
         }
 
         private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
         {
-            applicationClose();
+            if(userRequestShutdown == false)
+            {
+                e.Cancel = true;
+                this.WindowState = WindowState.Minimized;
+            }
+        
         }
 
-        private void applicationClose()
+        private void applicationShutDown()
         {
             MyNotifyIcon.Visible = false;
             MyNotifyIcon.Dispose();
@@ -150,48 +145,77 @@ namespace Client
             Logger.log("--------------------------------------");
             Logger.log("");
 
+            userRequestShutdown = true;
+            this.Close();
         }
 
         #endregion
 
         #region SYSTEM TRAY
+        private void ConfigureSystemTray()
+        {
+            MyNotifyIcon = new System.Windows.Forms.NotifyIcon();
+            MyNotifyIcon.Icon = new System.Drawing.Icon(Constants.IcoPath);
+
+            MyNotifyIcon.MouseDoubleClick += new System.Windows.Forms.MouseEventHandler(MyNotifyIcon_MouseDoubleClick);
+            //MyNotifyIcon.MouseClick += new System.Windows.Forms.MouseEventHandler(MyNotifyIcon_MouseClick);
+            //MyNotifyIcon.Click += new System.Windows.Forms.MouseEventHandler(NotifyIcon_NotificationAreaClick);
+
+            //gestione menu tray
+            menu_tray = new System.Windows.Forms.ContextMenu();
+            menu_tray.MenuItems.Add(0, new System.Windows.Forms.MenuItem("Apri", new System.EventHandler(Show_Click)));
+            menu_tray.MenuItems.Add(1, new System.Windows.Forms.MenuItem("Chiudi applicazione", new System.EventHandler(Exit_Click)));
+            MyNotifyIcon.ContextMenu = menu_tray;
+
+
+            MyNotifyIcon.Visible = true;
+            statusInSynch = false;
+        }
+
         protected void Exit_Click(Object sender, System.EventArgs e)
         {
-            this.Close();
+            applicationShutDown();
         }
 
         protected void Show_Click(Object sender, System.EventArgs e)
         {
             this.WindowState = WindowState.Normal;
-            this.Show();
+            //this.Show();
         }
 
         void MyNotifyIcon_MouseDoubleClick(object sender, System.Windows.Forms.MouseEventArgs e)
         {
             this.WindowState = WindowState.Normal;
-            this.Show();
+            //this.Show();
         }
 
         protected override void OnStateChanged(EventArgs e)
         {
             if (this.WindowState == WindowState.Minimized)
             {
-                //this.ShowInTaskbar = false;
+                this.ShowInTaskbar = false;
                 //MyNotifyIcon.BalloonTipTitle = "App status";
                 //MyNotifyIcon.BalloonTipText = "The app is minimized in the System Tray";
-                MyNotifyIcon.ShowBalloonTip(20, "App status", "The app is minimized in the System Tray", ToolTipIcon.Info);
+                //yNotifyIcon.ShowBalloonTip(2000, "App status", "The app is minimized in the System Tray", ToolTipIcon.Info);
             }
             else if (this.WindowState == WindowState.Normal)
             {
                 this.ShowInTaskbar = true;
                 //MyNotifyIcon.BalloonTipTitle = "App status";
                 //MyNotifyIcon.BalloonTipText = "The app is currently running";
-                MyNotifyIcon.ShowBalloonTip(20, "App status", "The app is currently running" , ToolTipIcon.Info);
+                //MyNotifyIcon.ShowBalloonTip(2000, "App status", "The app is currently running" , ToolTipIcon.Info);
             }
 
             base.OnStateChanged(e);
         }
 
+        //protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
+        //{
+        //    e.Cancel = false;
+        //    //this.WindowState = WindowState.Minimized;
+
+        //    base.OnClosing(e);
+        //}
         #endregion                
 
         #region TIMER
@@ -199,33 +223,33 @@ namespace Client
         {
             SynchTimer = new System.Timers.Timer()
             {
-                Interval = Constants.TreeViewRefreshTimerInterval,
+                Interval = Settings.TimerFrequency,
                 AutoReset = true,
                 Enabled = false
             };
 
-            SynchTimer.Elapsed += new ElapsedEventHandler(TreeViewRefreshTimerTick);
+            SynchTimer.Elapsed += new ElapsedEventHandler(SynchTimerTick);
+            StopTimer();
         }
 
         private void StartTimer()
         {
             SynchTimer.Enabled = true;
+            SynchTimer.Start();
         }
 
         private void StopTimer()
         {
             SynchTimer.Enabled = false;
+            SynchTimer.Stop();
         }
 
-        private void TreeViewRefreshTimerTick(object sender, ElapsedEventArgs e)
+        private void SynchTimerTick(object sender, ElapsedEventArgs e)
         {
-            Logger.log("test timer"); 
-
             try
             {
-                // chiamo la synch in un thread
-                Thread thread = new Thread(() => Synch());
-                thread.Start();
+                // chiamo la synch usando il thread pool
+                ThreadPool.QueueUserWorkItem(Synch);
 
                 //necessario per far si che il thread lanciato per la gestione dell'evento possa
                 //interagire con il thread principale che gestisce l'interfaccia grafica
@@ -234,10 +258,12 @@ namespace Client
                 }), System.Windows.Threading.DispatcherPriority.Background, cts.Token);
 
             }
-            catch (TaskCanceledException ex)
+            catch (Exception ex)
             {
-                // il task che ho lanciato per ridisegnare la treeview è stato cancellato (probabilmente chiusura dell'app)
-                Logger.log(ex.Message);
+                StackTrace st = new StackTrace(ex, true);
+                StackFrame sf = Utilis.GetFirstValidFrame(st);
+
+                Logger.Error("[" + Path.GetFileName(sf.GetFileName()) + "(" + sf.GetFileLineNumber() + ")]: " + ex.Message);
             }
 
         }
@@ -256,6 +282,18 @@ namespace Client
         #region XML TO TREEVIEW
         private void printXmlToTreeView()
         {
+            // Controllo di dover aggiornare la TRW
+            string currentXmlDigest = XMLInstance.XMLDigest();
+            if (currentXmlDigest.CompareTo(lastXmlDigest) == 0)
+            {
+                // XML uguali, ritorno
+                return;
+            }
+            else
+            {
+                lastXmlDigest = currentXmlDigest;
+            }
+
             XElement root = XMLInstance.GetRoot();
             TRWFolder.Items.Clear();
 
@@ -554,7 +592,7 @@ namespace Client
         /// funzione chiamata al premere del pulsante Login, controlla i dati inseriti e permette l'accesso a Window1
         /// (sia per la checkLogin sia per la sendRegistration)
         /// </summary>
-        private void BTNLogin_Clicked(object sender, RoutedEventArgs e)
+        private async void BTNLogin_Clicked(object sender, RoutedEventArgs e)
         {
             string username = "";
             string pwd = "";
@@ -611,21 +649,26 @@ namespace Client
             #endregion
 
 
-            if (client.ClientLogin(username, pwd, ref this.authToken) == true)
-            {
-                // Login OK
-                TABControl.SelectedIndex = 2;
-            }
-            else
+            if (client.ClientLogin(username, pwd, ref this.authToken) == false)
             {
                 TABControl.SelectedIndex = 0;
                 return;
             }
 
+            // Minimizzo la finestra
+            this.WindowState = WindowState.Minimized;
+
+            // Login e synch OK
+            Logger.Info("Raccolgo l'xml");
+            MyNotifyIcon.ShowBalloonTip(2000, "App status", "Indicizzando i file", ToolTipIcon.Info);
+            await xmlGenerationTask;
+            Logger.Info("Raccolto xml");
+            XMLInstance.SaveToFile(Constants.XmlSavePath + @"\x.xml");
 
             // Prima synch
             try
             {
+                statusInSynch = true;
                 client.ClientSync(XMLInstance, this.authToken, deletedFilesList);
             }
             catch (Exception ex)
@@ -640,6 +683,26 @@ namespace Client
                 // Ritorno alla schermata di login
                 TABControl.SelectedIndex = 0;
             }
+            finally
+            {
+                statusInSynch = false;
+
+                lock (_fswLocker)
+                {
+                    // Risveglio il fsw
+                    Monitor.Pulse(_fswLocker);
+                }
+            }
+            
+            // Mi sposto nel main
+            TABControl.SelectedIndex = 2;
+
+            printXmlToTreeView();
+            
+            // Ripristino la finestra
+            this.WindowState = WindowState.Normal;
+
+            StartTimer();
         }
 
         /// <summary>
@@ -1003,13 +1066,13 @@ namespace Client
         #region SYNCH
         private void BtnStartSynch_Click(object sender, RoutedEventArgs e)
         {
-            Synch();
+            ThreadPool.QueueUserWorkItem(Synch);
         }
 
         /// <summary>
         /// Wrapper per la sincronizzazione
         /// </summary>
-        private void Synch()
+        private void Synch(object taskState)
         {
             try
             {
@@ -1033,13 +1096,14 @@ namespace Client
             {
                 statusInSynch = false;
 
-                // Risveglio il fsw
-                Monitor.Pulse(_fswLocker);
+                lock (_fswLocker)
+                {
+                    // Risveglio il fsw
+                    Monitor.Pulse(_fswLocker);
+                }
             }
         }
-
-
-
+        
         #endregion
 
     }
