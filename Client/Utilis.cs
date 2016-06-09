@@ -1,12 +1,12 @@
 ﻿using System;
+using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Net.Sockets;
 using System.Security.Cryptography;
 using System.Text;
-using System.Diagnostics;
-using System.Threading;
-using System.Linq;
 using System.Text.RegularExpressions;
+using System.Threading;
 
 namespace Client
 {

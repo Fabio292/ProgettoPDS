@@ -1,11 +1,10 @@
 ﻿using System;
-using System.Net.Sockets;
-using System.Threading;
-using System.Xml.Linq;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Net.Sockets;
 using System.Windows;
+using System.Xml.Linq;
 
 namespace Client
 {

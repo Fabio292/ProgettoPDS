@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
+using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Timers;
@@ -8,11 +10,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Forms;
 using System.Xml.Linq;
-using System.Diagnostics;
 using WinForms = System.Windows.Forms;
-using System.Net;
-using System.Windows.Media;
-using System.Collections.Concurrent;
 
 namespace Client
 {
@@ -78,6 +76,19 @@ namespace Client
             ConfigureWatcher();
             ConfigureTimer();
 
+            // Carico le impostazioni
+            TXTpathCartella.Text = Settings.SynchPath;
+            NUDTimerValue.Value = Settings.TimerFrequency / 1000; // Converto i ms in secondi
+            TXTServerIP.Text = Settings.ServerIP;
+            TXTServerPort.Text = Settings.ServerPort.ToString();
+
+            // Genero l'xml in un task che raccoglierò successivamente
+            Logger.Info("Lancio xml");
+            xmlGenerationTask = Task.Run(() =>
+            {
+                XMLInstance = new XmlManager(new DirectoryInfo(Settings.SynchPath));
+            });
+
             // Avvio timer e watcher
             StartWatcher();
             StopTimer();//StartTimer();
@@ -98,18 +109,6 @@ namespace Client
                 ChkRicorda.IsChecked = true;
             }
 
-            // Carico le impostazioni
-            TXTpathCartella.Text = Settings.SynchPath;
-            NUDTimerValue.Value = Settings.TimerFrequency / 1000; // Converto i ms in secondi
-            TXTServerIP.Text = Settings.ServerIP;
-            TXTServerPort.Text = Settings.ServerPort.ToString();
-
-            // Genero l'xml in un task che raccoglierò successivamente
-            Logger.Info("Lancio xml");
-            xmlGenerationTask = Task.Run(() =>
-            {
-                XMLInstance = new XmlManager(new DirectoryInfo(Settings.SynchPath));
-            });
 
         }
 
