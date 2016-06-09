@@ -32,14 +32,17 @@ namespace Client
         private List<string> deletedFilesList = new List<string>();
                
         // TIMER
-        static System.Timers.Timer TreeViewRefreshTimer;
-
-        // Lista per gli eventi
-        //EventWaitHandle fswWaitHandle = new AutoResetEvent(false);
-        //private ConcurrentQueue<FSWEventListElement> fswEventQueue = new ConcurrentQueue<FSWEventListElement>();
-        readonly object _locker = new object();
+        static System.Timers.Timer SynchTimer;
+        
+        readonly object _fswLocker = new object();
         private Queue<FSWEventListElement> fswEventQueue = new Queue<FSWEventListElement>();
         Thread fswEventthread;
+        // Posso usare semplicemente un bool visto che non faccio operazioni di 
+        // contronto e modifica https://msdn.microsoft.com/en-us/library/aa691278%28VS.71%29.aspx
+        private static volatile bool statusInSynch;
+
+        // uso questo lock per bloccare il timer che richiama la synch
+        readonly object synchTimerLock = new object();
 
         private string authToken = Constants.DefaultAuthToken;
 
@@ -58,11 +61,12 @@ namespace Client
             //gestione menu tray
             menu_tray = new System.Windows.Forms.ContextMenu();
             menu_tray.MenuItems.Add(0, new System.Windows.Forms.MenuItem("Apri", new System.EventHandler(Show_Click)));
-            menu_tray.MenuItems.Add(1, new System.Windows.Forms.MenuItem("Chiudi", new System.EventHandler(Exit_Click)));
+            menu_tray.MenuItems.Add(1, new System.Windows.Forms.MenuItem("Chiudi applicazione", new System.EventHandler(Exit_Click)));
             MyNotifyIcon.ContextMenu = menu_tray;
 
 
             MyNotifyIcon.Visible = true;
+            statusInSynch = false;
 
             //foreach (TabItem item in TABControl.Items)
             //{
@@ -87,13 +91,9 @@ namespace Client
 
             // genero l'xml
             // TODO fare in un thread a parte?
-            Logger.Info("START");
             XMLInstance = new XmlManager(new DirectoryInfo(Settings.SynchPath));
-            Logger.Info("XML CREATO");
             XMLInstance.SaveToFile(Constants.XmlSavePath + @"\x.xml");
-            Logger.Info("XML SALVATO");
             printXmlToTreeView();
-            Logger.Info("XML STAMPATO");
 
             // Avvio timer e watcher
             StartWatcher();
@@ -125,19 +125,23 @@ namespace Client
 
         private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
         {
+            applicationClose();
+        }
 
+        private void applicationClose()
+        {
             MyNotifyIcon.Visible = false;
             MyNotifyIcon.Dispose();
 
             cts.Cancel();
 
             // Interrompo il thread per il fsw
-            lock (_locker)
+            lock (_fswLocker)
             {
                 // Metto in coda
                 fswEventQueue.Enqueue(null);
                 // Sveglio il thread
-                Monitor.Pulse(_locker);
+                Monitor.Pulse(_fswLocker);
             }
 
             Logger.log("");
@@ -145,6 +149,7 @@ namespace Client
             Logger.log("|        CHIUSURA CLIENT             |");
             Logger.log("--------------------------------------");
             Logger.log("");
+
         }
 
         #endregion
@@ -192,38 +197,42 @@ namespace Client
         #region TIMER
         private void ConfigureTimer()
         {
-            TreeViewRefreshTimer = new System.Timers.Timer()
+            SynchTimer = new System.Timers.Timer()
             {
                 Interval = Constants.TreeViewRefreshTimerInterval,
                 AutoReset = true,
                 Enabled = false
             };
 
-            TreeViewRefreshTimer.Elapsed += new ElapsedEventHandler(TreeViewRefreshTimerTick);
+            SynchTimer.Elapsed += new ElapsedEventHandler(TreeViewRefreshTimerTick);
         }
 
         private void StartTimer()
         {
-            TreeViewRefreshTimer.Enabled = true;
+            SynchTimer.Enabled = true;
         }
 
         private void StopTimer()
         {
-            TreeViewRefreshTimer.Enabled = false;
+            SynchTimer.Enabled = false;
         }
 
         private void TreeViewRefreshTimerTick(object sender, ElapsedEventArgs e)
         {
-            Logger.log("test timer");
- 
+            Logger.log("test timer"); 
 
             try
             {
+                // chiamo la synch in un thread
+                Thread thread = new Thread(() => Synch());
+                thread.Start();
+
                 //necessario per far si che il thread lanciato per la gestione dell'evento possa
                 //interagire con il thread principale che gestisce l'interfaccia grafica
                 Dispatcher.Invoke(new Action(() => {
                     printXmlToTreeView();
                 }), System.Windows.Threading.DispatcherPriority.Background, cts.Token);
+
             }
             catch (TaskCanceledException ex)
             {
@@ -299,15 +308,13 @@ namespace Client
                 IncludeSubdirectories = true,
                 InternalBufferSize = 64 * 1024 //max possible buffer size
             };
-
+            Watcher.EnableRaisingEvents = false;
 
             Watcher.Changed += new FileSystemEventHandler(OnChanged);
             Watcher.Created += new FileSystemEventHandler(OnChanged);
             Watcher.Deleted += new FileSystemEventHandler(OnChanged);
             Watcher.Renamed += new RenamedEventHandler(OnRenamed);
-
-            Watcher.EnableRaisingEvents = false;
-
+            
             fswEventthread = new Thread(fswEventConsumer);
             fswEventthread.Start();
         }
@@ -334,12 +341,12 @@ namespace Client
             try
             {
 
-                lock (_locker)
+                lock (_fswLocker)
                 {
                     // Metto in coda
                     fswEventQueue.Enqueue(new FSWEventListElement() { absPath = e.FullPath, ChangeType = e.ChangeType });
                     // Sveglio il thread
-                    Monitor.Pulse(_locker);
+                    Monitor.Pulse(_fswLocker);
                 }
 
                 //if (e.ChangeType == WatcherChangeTypes.Changed)
@@ -434,10 +441,10 @@ namespace Client
                 while (true)                        
                 {
                     FSWEventListElement element;
-                    lock (_locker)
+                    lock (_fswLocker)
                     {
-                        while (fswEventQueue.Count == 0)
-                            Monitor.Wait(_locker);
+                        while (fswEventQueue.Count == 0 || statusInSynch == true)
+                            Monitor.Wait(_fswLocker);
 
                         // Estraggo l'elemento
                         element = fswEventQueue.Dequeue();
@@ -447,6 +454,7 @@ namespace Client
                             return;           
                     }
 
+                    // Consumo l'elemento
                     switch (element.ChangeType)
                     {
                         case WatcherChangeTypes.Changed:
@@ -1005,7 +1013,11 @@ namespace Client
         {
             try
             {
+                statusInSynch = true;
+
+                StopTimer();
                 client.ClientSync(XMLInstance, authToken, deletedFilesList);
+                StartTimer();                               
                 
             }
             catch (Exception ex)
@@ -1017,12 +1029,18 @@ namespace Client
 
                 Logger.Error("[" + Path.GetFileName(sf.GetFileName()) + "(" + sf.GetFileLineNumber() + ")]: " + ex.Message);
             }
+            finally
+            {
+                statusInSynch = false;
+
+                // Risveglio il fsw
+                Monitor.Pulse(_fswLocker);
+            }
         }
 
 
 
         #endregion
-
 
     }
 

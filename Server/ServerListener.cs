@@ -6,6 +6,7 @@ using System.IO;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace Server
 {
@@ -126,9 +127,12 @@ namespace Server
                         TcpClient client = await tcpListener.AcceptTcpClientAsync().ConfigureAwait(false);
                         Logger.Info("Ricevuta connessione da " + client.Client.RemoteEndPoint);
 
-                        // Gestisco il client in un thread separato
-                        Thread thread = new Thread(() => serveClientSync(client, ct));
-                        thread.Start();
+                        // Gestisco il client in un thread separato usando il THREAD POOL
+                        // Questo perchè tendenzialmente la maggiorparte delle synch non presenteranno modifiche
+                        // Ignoro il warning sulla mancanza di await perchè tanto non ho bisogno del risultato, approccio 'fire & forget'
+                        #pragma warning disable 4014
+                        Task.Run(() => serveClientSync(client, ct));                        
+                        #pragma warning restore 4014
 
                     }
                 }
@@ -160,7 +164,7 @@ namespace Server
                 string userAuthtoken = Constants.DefaultAuthToken;
 
                 Command k;
-                
+
                 // LOOP DI COMANDI
                 while ((exitFlag == false) || (ct.IsCancellationRequested == true))
                 {
