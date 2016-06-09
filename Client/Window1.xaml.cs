@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Net;
+using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Timers;
@@ -23,30 +24,37 @@ namespace Client
         private CancellationTokenSource cts = new CancellationTokenSource();
         private FileSystemWatcher Watcher;
         private XmlManager XMLInstance;
+
+        static string lastXmlDigest = "";
+        private Task xmlGenerationTask;
+
+
+        // USER INTERACTION
+        static bool userRequestShutdown = false;
         private System.Windows.Forms.NotifyIcon MyNotifyIcon;
         private System.Windows.Forms.ContextMenu menu_tray;
+        private string authToken = Constants.DefaultAuthToken;
+        private TabIndexEnum lastTab = TabIndexEnum.Login;
 
+        // XML INTERACTION
         private Dictionary<string, List<VersionInfo>> remoteVersionMap = new Dictionary<string, List<VersionInfo>>();
         private List<string> deletedFilesList = new List<string>();
 
-        static string lastXmlDigest = "";
-
-        private Task xmlGenerationTask;
-        static bool userRequestShutdown = false;
-        // TIMER
+        // SYNCH TIMER
         static System.Timers.Timer SynchTimer;
+        // uso questo lock per bloccare il timer che richiama la synch
+        readonly object synchTimerLock = new object();
         
+
+        // THREADING        
         readonly object _fswLocker = new object();
         private Queue<FSWEventListElement> fswEventQueue = new Queue<FSWEventListElement>();
         Thread fswEventthread;
         // Posso usare semplicemente un bool visto che non faccio operazioni di 
         // contronto e modifica https://msdn.microsoft.com/en-us/library/aa691278%28VS.71%29.aspx
         private static volatile bool statusInSynch;
+        
 
-        // uso questo lock per bloccare il timer che richiama la synch
-        readonly object synchTimerLock = new object();
-
-        private string authToken = Constants.DefaultAuthToken;
 
         #region COSTRUTTORE - USCITA
         public Window1()
@@ -154,6 +162,10 @@ namespace Client
         private void ConfigureSystemTray()
         {
             MyNotifyIcon = new System.Windows.Forms.NotifyIcon();
+
+            //this.Icon = Resources.;
+            
+
             MyNotifyIcon.Icon = new System.Drawing.Icon(Constants.IcoPath);
 
             MyNotifyIcon.MouseDoubleClick += new System.Windows.Forms.MouseEventHandler(MyNotifyIcon_MouseDoubleClick);
@@ -540,51 +552,65 @@ namespace Client
         #endregion
 
         #region TAB CHANGE
-
-        /// <summary>
-        /// Penso serva a tornare nel main
-        /// </summary>
-        private void BTNRestoreToMain_Click(object sender, RoutedEventArgs e)
-        {
-            TABControl.SelectedIndex = 2;
-        }
-
-
         private void GotoLogin()
         {
+            lastTab = (TabIndexEnum)TABControl.SelectedIndex;
             TABControl.SelectedIndex = (int)TabIndexEnum.Login;
         }
 
         private void GotoRegistration()
         {
+            lastTab = (TabIndexEnum)TABControl.SelectedIndex;
             TABControl.SelectedIndex = (int)TabIndexEnum.Registration;
         }
 
         private void GotoMain()
         {
+            lastTab = (TabIndexEnum)TABControl.SelectedIndex;
             TABControl.SelectedIndex = (int)TabIndexEnum.Main;
         }
 
         private void GotoRestore()
         {
+            lastTab = (TabIndexEnum)TABControl.SelectedIndex;
             TABControl.SelectedIndex = (int)TabIndexEnum.Restore;
         }
         
         private void GotoSettings()
         {
+            lastTab = (TabIndexEnum)TABControl.SelectedIndex;
             TABControl.SelectedIndex = (int)TabIndexEnum.Settings;
+        }
+
+        /// <summary>
+        /// Mi sposto alla tab precedente
+        /// </summary>
+        private void GotoPreviousTab()
+        {
+            TABControl.SelectedIndex = (int)lastTab;
         }
 
         #endregion
 
         #region ACCOUNT MANAGE
+
+        private void BTNLoginToSettings_Click(object sender, RoutedEventArgs e)
+        {
+            GotoSettings();
+        }
+
+        private void BTNRegToSettings_Click(object sender, RoutedEventArgs e)
+        {
+            GotoSettings();
+        }
+
         /// <summary>
         /// funzione chiamata al premere del link "Non possiedi un account? Registrati", crea il nuovo account e redirezione su MainWindow
         /// </summary>
         private void AddAccount(object sender, RoutedEventArgs e)
         {
             //monto la scheda Registrazione
-            TABControl.SelectedIndex = 1;
+            GotoRegistration();
         }
 
         /// <summary>
@@ -605,7 +631,7 @@ namespace Client
                 int usnLen = username.Length;
                 if (usnLen < Constants.MinUsernameLength || usnLen > Constants.MaxUsernameLength)
                 {
-                    TABControl.SelectedIndex = 0;
+                    GotoLogin();
                     Logger.Error("lunghezza username non valida" + username);
                     System.Windows.MessageBox.Show("lunghezza username non valida" + username);
                     return;
@@ -614,7 +640,7 @@ namespace Client
                 int pwdLen = pwd.Length;
                 if (pwdLen < Constants.MinPasswordLength || pwdLen > Constants.MaxPasswordLength)
                 {
-                    TABControl.SelectedIndex = 0;
+                    GotoLogin();
                     Logger.Error("lunghezza password non valida" + pwd);
                     System.Windows.MessageBox.Show("lunghezza password non valida" + pwd);
                     return;
@@ -642,7 +668,7 @@ namespace Client
                 Logger.Error("[" + Path.GetFileName(sf.GetFileName()) + "(" + sf.GetFileLineNumber() + ")]: " + ex.Message);
 
                 // Ritorno alla schermata di login
-                TABControl.SelectedIndex = 0;
+                GotoLogin();
                 return;
             }
             #endregion
@@ -650,7 +676,7 @@ namespace Client
 
             if (client.ClientLogin(username, pwd, ref this.authToken) == false)
             {
-                TABControl.SelectedIndex = 0;
+                GotoLogin();
                 return;
             }
 
@@ -680,7 +706,7 @@ namespace Client
                 Logger.Error("[" + Path.GetFileName(sf.GetFileName()) + "(" + sf.GetFileLineNumber() + ")]: " + ex.Message);
 
                 // Ritorno alla schermata di login
-                TABControl.SelectedIndex = 0;
+                GotoLogin();
             }
             finally
             {
@@ -692,9 +718,9 @@ namespace Client
                     Monitor.Pulse(_fswLocker);
                 }
             }
-            
+
             // Mi sposto nel main
-            TABControl.SelectedIndex = 2;
+            GotoMain();
 
             printXmlToTreeView();
             
@@ -724,7 +750,7 @@ namespace Client
                 int usnLen = username.Length;
                 if (usnLen < Constants.MinUsernameLength || usnLen > Constants.MaxUsernameLength)
                 {
-                    TABControl.SelectedIndex = 1;
+                    GotoRegistration();
                     Logger.Error("lunghezza username non valida" + usnLen);
                     System.Windows.MessageBox.Show("lunghezza username non valida" + usnLen);
                     return;
@@ -733,7 +759,7 @@ namespace Client
                 // Test password uguale passwordRep
                 if (password.CompareTo(passwordRep) != 0)
                 {
-                    TABControl.SelectedIndex = 1;
+                    GotoRegistration();
                     Logger.Error("Le due password non corrispondono");
                     System.Windows.MessageBox.Show("Le due password non corrispondono");
                     //cancello i due campi
@@ -745,7 +771,7 @@ namespace Client
                 int pwdLen = password.Length;
                 if (pwdLen < Constants.MinPasswordLength || pwdLen > Constants.MaxPasswordLength)
                 {
-                    TABControl.SelectedIndex = 1;
+                    GotoRegistration();
                     Logger.Error("lunghezza password non valida" + pwdLen);
                     System.Windows.MessageBox.Show("lunghezza password non valida" + pwdLen);
                     return;
@@ -761,7 +787,7 @@ namespace Client
                 Logger.Error("[" + Path.GetFileName(sf.GetFileName()) + "(" + sf.GetFileLineNumber() + ")]: " + ex.Message);
 
                 // Ritorno alla schermata di registrazione
-                TABControl.SelectedIndex = 1;
+                GotoRegistration();
                 return;
             }
             #endregion
@@ -773,7 +799,7 @@ namespace Client
             }
             else
             {
-                TABControl.SelectedIndex = 1;
+                GotoRegistration();
                 return;
             }            
 
@@ -784,7 +810,7 @@ namespace Client
         #region SETTINGS TAB
         private void BtnSettings_Click(object sender, RoutedEventArgs e)
         {
-            TABControl.SelectedIndex = 4;
+            GotoSettings();
         }
 
         private void BTNSaveSettings_Click(object sender, RoutedEventArgs e)
@@ -856,8 +882,14 @@ namespace Client
             #endregion
 
             Logger.Info("Nuove impostazioni salvate");
-            
+
             // TODO rendere effettive le modifiche
+            GotoPreviousTab();
+        }
+
+        private void BTNSettingsToMain_Click(object sender, RoutedEventArgs e)
+        {
+            GotoPreviousTab();
         }
 
         private void BTNBrowseFolder_Clicked(object sender, RoutedEventArgs e)
@@ -872,12 +904,20 @@ namespace Client
 
         #region RESTORE TAB
         /// <summary>
+        /// Torno al main
+        /// </summary>
+        private void BTNRestoreToMain_Click(object sender, RoutedEventArgs e)
+        {
+            GotoMain();
+        }
+
+        /// <summary>
         /// La funzione permette di accedere alla scheda contenente lo storico della cartella. 
         /// E' possibile procedere con il ripristino di una delle versioni precedenti
         /// </summary>
         private void BtnStoria_Click(object sender, RoutedEventArgs e)
         {
-            TABControl.SelectedIndex = 3;
+            GotoRestore();
 
             ///TODO faccio una Client.synch
             ///TODO invio la richiesta al server -> XML con i dati della cartella (history)
@@ -1102,9 +1142,10 @@ namespace Client
                 }
             }
         }
-        
-        #endregion
 
+
+        #endregion
+        
     }
 
     public class VersionInfo
@@ -1118,6 +1159,9 @@ namespace Client
         public bool deleted;
     }
     
+    /// <summary>
+    /// Enum per le varie tab
+    /// </summary>
     public enum TabIndexEnum : int
     {
         Login,

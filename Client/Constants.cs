@@ -37,7 +37,7 @@ namespace Client
         /// <summary>
         /// Percorso dell'icona
         /// </summary>
-        public const string IcoPath = @"D:\PDSCartellaPDS\icona.ico";
+        public const string IcoPath = @"Img/icona.ico";
 
         /// <summary>
         /// Formato della stringa della data nell'xml
