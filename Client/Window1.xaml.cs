@@ -63,10 +63,10 @@ namespace Client
 
             ConfigureSystemTray();
 
-            //foreach (TabItem item in TABControl.Items)
-            //{
-            //    item.Visibility = Visibility.Collapsed;
-            //}
+            foreach (TabItem item in TABControl.Items)
+            {
+                item.Visibility = Visibility.Collapsed;
+            }
 
             //((TabItem)TABControl.Items.GetItemAt(0)).Visibility = Visibility.Collapsed;
             //((TabItem)TABControl.Items.GetItemAt(1)).Visibility = Visibility.Collapsed;
@@ -245,14 +245,20 @@ namespace Client
 
         private void StartTimer()
         {
-            //SynchTimer.Enabled = true;
-            //SynchTimer.Start();
+            SynchTimer.Enabled = true;
+            SynchTimer.Start();
         }
 
         private void StopTimer()
         {
             SynchTimer.Enabled = false;
             SynchTimer.Stop();
+        }
+
+        private void ResetTimer()
+        {
+            SynchTimer.Stop();
+            SynchTimer.Start();
         }
 
         private void SynchTimerTick(object sender, ElapsedEventArgs e)
@@ -884,6 +890,9 @@ namespace Client
             Logger.Info("Nuove impostazioni salvate");
 
             // TODO rendere effettive le modifiche
+            SynchTimer.Interval = Settings.TimerFrequency;
+            ResetTimer();            
+
             GotoPreviousTab();
         }
 
@@ -915,29 +924,41 @@ namespace Client
         /// La funzione permette di accedere alla scheda contenente lo storico della cartella. 
         /// E' possibile procedere con il ripristino di una delle versioni precedenti
         /// </summary>
-        private void BtnStoria_Click(object sender, RoutedEventArgs e)
+        private async void BtnStoria_Click(object sender, RoutedEventArgs e)
         {
+            ///TODO faccio una Client.synch
+            Task synchAwaitableTask = Task.Run(() =>
+                Synch(null)
+            );
+
             GotoRestore();
 
-            ///TODO faccio una Client.synch
-            ///TODO invio la richiesta al server -> XML con i dati della cartella (history)
-            ///TODO il server risponde inviandomi l'XML
-                        
-            XElement serverRoot = client.ClientBeginRestore(XMLInstance, authToken);
 
-            TRWRestore.Items.Clear();
-            remoteVersionMap.Clear();
+            try
+            {
+                TRWRestore.Items.Clear();
+                remoteVersionMap.Clear();
+                await synchAwaitableTask;
 
-            TreeViewItem trwRoot = xmlToTreeViewRestore(serverRoot, "");
-            trwRoot.Header = "Cartella Backup";
+                XElement serverRoot = client.ClientBeginRestore(XMLInstance, authToken);
+                TreeViewItem trwRoot = xmlToTreeViewRestore(serverRoot, "");
+                trwRoot.Header = Path.GetFileName(Settings.SynchPath);
 
-            TRWRestore.Items.Add(trwRoot);
 
-            /*
-            tv.Nodes["node1"].ForeColor = System.Drawing.Color.Blue;
-            tv.Nodes["node2"].ForeColor = System.Drawing.Color.Black;*/
 
-            ((TreeViewItem)TRWRestore.Items.GetItemAt(0)).IsExpanded = true;
+                TRWRestore.Items.Add(trwRoot);
+
+                /*
+                tv.Nodes["node1"].ForeColor = System.Drawing.Color.Blue;
+                tv.Nodes["node2"].ForeColor = System.Drawing.Color.Black;*/
+
+                ((TreeViewItem)TRWRestore.Items.GetItemAt(0)).IsExpanded = true;
+
+            }
+            catch (Exception ex)
+            {
+                System.Windows.MessageBox.Show(ex.Message, "Errore", MessageBoxButton.OK, MessageBoxImage.Error);
+            }            
 
         }
 
@@ -1106,6 +1127,7 @@ namespace Client
         #region SYNCH
         private void BtnStartSynch_Click(object sender, RoutedEventArgs e)
         {
+            // Fire and forget
             ThreadPool.QueueUserWorkItem(Synch);
         }
 
@@ -1120,7 +1142,7 @@ namespace Client
 
                 StopTimer();
                 client.ClientSync(XMLInstance, authToken, deletedFilesList);
-                StartTimer();                               
+                ResetTimer();                             
                 
             }
             catch (Exception ex)
@@ -1146,7 +1168,7 @@ namespace Client
 
 
         #endregion
-        
+
     }
 
     public class VersionInfo
@@ -1178,4 +1200,5 @@ namespace Client
         public string absPath;
     }
 
+    
 }
