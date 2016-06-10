@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Windows.Controls;
 using System.Xml.Linq;
 
 
@@ -389,6 +390,7 @@ namespace Client
             
             return;
         }
+
 
         /// <summary>
         /// Controllo due XML rendendo la lista dei file che devono essere MANDATI al server

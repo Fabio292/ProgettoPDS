@@ -199,7 +199,28 @@ namespace Server
                             ServerListener.clientSynch(client, k.AuthToken);
                             exitFlag = true;
                             break;
-                            
+
+                        case CmdType.getRestoreXML:
+                            // Invio l'XML con tutte le versioni
+                            int id = checkAuthToken(k.AuthToken);
+                            Logger.Info("RestoreXML da " + k.AuthToken);
+                            if(id == -1)
+                                ServerListener.sendError(client, ErrorCode.credentialsNotValid);
+                            else
+                                ServerListener.sendLastXml(client, id);
+                            exitFlag = true;
+                            break;
+
+                        case CmdType.restoreFile:
+                            // Invio il file per il restore
+                            id = checkAuthToken(k.AuthToken);
+                            if (id == -1)
+                                ServerListener.sendError(client, ErrorCode.credentialsNotValid);
+                            else
+                                ServerListener.restoreFile(client, k);
+                            exitFlag = false;
+                            break;
+
 
                         default:
                             ServerListener.sendError(client, ErrorCode.unexpectedMessageType);
@@ -223,7 +244,74 @@ namespace Server
             }
 
         }
-        
+
+        /// <summary>
+        /// Invio all'utente il file voluto
+        /// </summary>
+        /// <param name="payload"></param>
+        private static void restoreFile(TcpClient client, Command cmd)
+        {
+            #region controllo validità parametri
+            // Casto il comando
+            RestoreFileCommand restoreCmd = new RestoreFileCommand(cmd);
+
+            // Controllo il token
+            int UID = ServerListener.checkAuthToken(restoreCmd.AuthToken);
+            if (UID == -1)
+            {
+                ServerListener.sendError(client, ErrorCode.credentialsNotValid);
+                throw new Exception("Auth token non valido");
+            }
+            #endregion
+
+            #region recupero il file da DB
+            string fileAbsPath = "";
+            long fileSize = 0;
+            using (SQLiteConnection connessione = new SQLiteConnection(DB.GetConnectionString()))
+            {
+                connessione.Open();
+                using (SQLiteCommand sqlCmd = connessione.CreateCommand())
+                {
+                    sqlCmd.CommandText = @"SELECT PathServer, size FROM Versioni WHERE UID = @_UID AND PathClient = @_clientPath AND VersionID = @_versionID";
+                    sqlCmd.Parameters.AddWithValue("@_UID", UID);
+                    sqlCmd.Parameters.AddWithValue("@_clientPath", restoreCmd.RelFilePath);
+                    sqlCmd.Parameters.AddWithValue("@_versionID", restoreCmd.VersionID);
+
+                    using (SQLiteDataReader reader = sqlCmd.ExecuteReader())
+                    {
+                        try
+                        {
+                            reader.Read();
+                            fileAbsPath = reader.GetString(0);
+                            fileSize = reader.GetInt64(1);
+
+                            Logger.Info("Restore file: " + restoreCmd.RelFilePath + " size: " + fileSize);
+                        }
+                        catch (Exception)
+                        {
+                            fileAbsPath = "";
+                            fileSize = 0;
+                        }
+
+
+                    }
+
+                }
+            }
+            #endregion
+
+
+            if(fileAbsPath == "")
+            {
+                //File non trovato
+                ServerListener.sendError(client, ErrorCode.fileNotFound);
+            }
+            else
+            {
+                //Invio il file
+                Utilis.SendFile(client, fileAbsPath, fileSize);
+            }
+        }
 
         #region Gestione utente
 
@@ -1040,9 +1128,6 @@ namespace Server
         /// <param name="xml"> xml dell'ultima versione della cartella lato server</param>
         public static void sendLastXml(TcpClient cl, int UID)
         {
-            //string xmlPath = Constants.PathServerFile + Constants.PathSeparator + UID + ".xml";
-            //if (!File.Exists(xmlPath))
-            //    XmlManager.InitializeXmlFile(xmlPath);
 
             using (SQLiteConnection cnn = new SQLiteConnection(DB.GetConnectionString()))
             {

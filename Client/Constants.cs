@@ -144,6 +144,8 @@ namespace Client
         startSynch,
         endSynch,
         infoNum,
+        getRestoreXML,
+        restoreFile,
         fileName,
         #endregion
 
@@ -173,8 +175,9 @@ namespace Client
         unexpectedMessageType,
         usernameAlreadyPresent,
         usernameLengthNotValid,
-        passwordLengthNotValid
-
+        passwordLengthNotValid,
+        userAlreadyInSynch,
+        fileNotFound
     }
 }
 

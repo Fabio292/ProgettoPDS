@@ -35,12 +35,7 @@ namespace Server
         /// Percorso dove salvare il file xml
         /// </summary>
         public const string XmlSavePath = @"D:\PDSCartellaPDS";
-
-        /// <summary>
-        /// Percorso dell'icona
-        /// </summary>
-        public const string IcoPath = @"D:\PDSCartellaPDS\icona.ico";
-
+        
         /// <summary>
         /// Formato della stringa della data nell'xml
         /// </summary>
@@ -142,6 +137,8 @@ namespace Server
         startSynch,
         endSynch,
         infoNum,
+        getRestoreXML,
+        restoreFile,
         fileName,
         #endregion
 
@@ -172,8 +169,8 @@ namespace Server
         usernameAlreadyPresent,
         usernameLengthNotValid,
         passwordLengthNotValid,
-        userAlreadyInSynch
-
+        userAlreadyInSynch,
+        fileNotFound
     }
 }
 

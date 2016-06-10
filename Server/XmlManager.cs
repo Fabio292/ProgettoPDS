@@ -151,7 +151,7 @@ namespace Server
         public XmlManager(SQLiteConnection conn, int UID)
         {
             XElement root = new XElement(XmlManager.DirectoryElementName);
-            root.SetAttributeValue(XmlManager.DirectoryAttributeName, "_");
+            root.SetAttributeValue(XmlManager.DirectoryAttributeName, "");
 
 
             using (SQLiteCommand sqlCmd = conn.CreateCommand())

@@ -224,8 +224,7 @@ namespace Client
         public void ClientSync(XmlManager xmlClient, string authToken, List<string> deletedFileList)
         {
             XElement xmlRootServer;
-            XElement xmlRootClient;
-            
+            XElement xmlRootClient;            
 
             try
             {
@@ -358,6 +357,43 @@ namespace Client
         }
 
         /// <summary>
+        /// Analizzo la 
+        /// </summary>
+        /// <param name="xmlClient"></param>
+        /// <param name="authToken"></param>
+        public XElement ClientBeginRestore(XmlManager xmlClient, string authToken)
+        {
+            XElement xmlRootServer;
+            XElement xmlRootClient;
+
+
+            try
+            {
+                // Mi connetto al server
+                this.connect();
+                
+                //Richiedo l'xml con le versioni al server
+                xmlRootClient = xmlClient.GetRoot();
+                xmlRootServer = XmlManager.GetRoot(getLastXml(authToken, CmdType.getRestoreXML));
+
+                return xmlRootServer;                
+            }
+            catch (Exception e)
+            {
+                StackTrace st = new StackTrace(e, true);
+                StackFrame sf = Utilis.GetFirstValidFrame(st);
+
+                Logger.Error("[" + Path.GetFileName(sf.GetFileName()) + "(" + sf.GetFileLineNumber() + ")]: " + e.Message);
+
+                throw e;
+            }
+            finally
+            {
+                this.disconnect();
+            }
+        }
+
+        /// <summary>
         /// Mando al server i file cancellati
         /// </summary>
         /// <param name="deletedFileList">Lista dei file cancellati</param>
@@ -381,8 +417,7 @@ namespace Client
             Logger.Info("File cancellati inviati al server");
 
         }
-
-
+        
         /// <summary>
         /// invia al server i files creati/modificati
         /// </summary>
@@ -409,8 +444,7 @@ namespace Client
             Logger.Info("File inviati al server");
             
         }
-
-
+        
         /// <summary>
         /// scarica dal server i files modificati
         /// </summary>
@@ -451,9 +485,6 @@ namespace Client
 
         
         
-        
-        
-        
         /// <summary>
         /// Ritorna l'md5 dell'XML dell'ultima versione posseduta dal server
         /// </summary>
@@ -480,9 +511,9 @@ namespace Client
         /// <summary>
         /// Ritorna l'XML dell'ultima versione posseduta dal server
         /// </summary>
-        public XDocument getLastXml(string authToken)
+        public XDocument getLastXml(string authToken, CmdType cmdType = CmdType.getXML)
         {
-            Command richiestaXml = new Command(CmdType.getXML);
+            Command richiestaXml = new Command(cmdType);
             richiestaXml.AuthToken = authToken;
 
             Utilis.SendCmdSync(this.conn, richiestaXml);
@@ -491,10 +522,8 @@ namespace Client
             XmlCommand lastXmlServer = new XmlCommand(Utilis.GetCmdSync(this.conn));
             
             if (lastXmlServer == null || lastXmlServer.kmd != CmdType.Xml)
-            {
-                this.sendLogout();
                 throw new Exception("Aspettavo un comando contenente un Xml, ricevuto nulla o errato");
-            }
+
 
             return XDocument.Parse(lastXmlServer.Payload);
         }

@@ -245,8 +245,8 @@ namespace Client
 
         private void StartTimer()
         {
-            SynchTimer.Enabled = true;
-            SynchTimer.Start();
+            //SynchTimer.Enabled = true;
+            //SynchTimer.Start();
         }
 
         private void StopTimer()
@@ -922,24 +922,18 @@ namespace Client
             ///TODO faccio una Client.synch
             ///TODO invio la richiesta al server -> XML con i dati della cartella (history)
             ///TODO il server risponde inviandomi l'XML
-            if (!File.Exists(@"D:\PDSCartellaPDS\fileXML.xml"))
-            {
-                throw new Exception();
-            }
-            XmlManager temp = new XmlManager(@"D:\PDSCartellaPDS\fileXML.xml");
-            XElement root = temp.GetRoot();
+                        
+            XElement serverRoot = client.ClientBeginRestore(XMLInstance, authToken);
+
             TRWRestore.Items.Clear();
             remoteVersionMap.Clear();
 
-            TreeViewItem trwRoot = xmlToTreeViewRestore(root, "");
+            TreeViewItem trwRoot = xmlToTreeViewRestore(serverRoot, "");
             trwRoot.Header = "Cartella Backup";
 
             TRWRestore.Items.Add(trwRoot);
 
             /*
-            tv.Nodes.Add("node1", "Node 1");
-            tv.Nodes.Add("node2", "Node 2");
-
             tv.Nodes["node1"].ForeColor = System.Drawing.Color.Blue;
             tv.Nodes["node2"].ForeColor = System.Drawing.Color.Black;*/
 
@@ -1050,6 +1044,13 @@ namespace Client
                         LBLLocalDateValue.Content = "";
                         LBLLocalSizeValue.Content = "";
                     }
+
+                    // In ogni caso svuoto le lbl remote
+                    LBLRemoteDateValue.Content = "";
+                    LBLRemoteSizeValue.Content = "";
+
+                    // Seleziono automaticamente la prima versione
+                    LSTFileVersion.SelectedItem = LSTFileVersion.Items.GetItemAt(0);
                 }
                 else
                 {

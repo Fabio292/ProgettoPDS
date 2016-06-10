@@ -695,5 +695,120 @@ namespace Server
 
     }
 
+    /// <summary>
+    /// Comando per iniziare l'invio di un file
+    /// Vengono spediti i metadati nel payload [path|size|lastModTime] (size ha dimensione fissa di 8 byte)
+    /// </summary>
+    class RestoreFileCommand : Command
+    {
 
+        private string _relFilePath;
+        private int _versionId;
+        private static char cmdSeparator = '|';
+
+        /// <summary>
+        /// Il percorso del file relativo alla cartella di backup (senza '\' iniziale)
+        /// </summary>
+        public string RelFilePath
+        {
+            get { return _relFilePath; }
+            private set { }
+        }
+
+        public int VersionID
+        {
+            get { return _versionId; }
+            private set { }
+        }
+
+        /// <summary>
+        /// Crea l'oggetto RestoreFileCommand caricando i parametri del file passato
+        /// </summary>
+        /// <param name="relPath">Percorso relativo (senza il '\' iniziale) del file</param>
+        /// <exception cref="ArgumentException">Eccezione lanciata quando il percorso del file non è valido</exception>
+        public RestoreFileCommand(string relPath, int version, string authToken) : base()
+        {
+
+            if(version < 0)
+                throw new ArgumentException("version non valido");
+            if (authToken.Length != Constants.AuthTokenLength)
+                throw new ArgumentException("Auth token non valido");
+            
+
+            // Imposto il tipo di comando
+            this.kmd = CmdType.restoreFile;
+
+            // Recupero le informazioni sul file
+            this._relFilePath = relPath;
+            this._versionId = version;
+            this.AuthToken = authToken;
+
+            // Salvo il payload
+            this.Payload = this.generatePayload();
+        }
+
+        /// <summary>
+        /// Estraggo da un comando generico i dati per costruire un RestoreFileCommand, Lancio un'eccezione se non è possibile
+        /// </summary>
+        /// <param name="cmd">Il comando generico ricevuto via socket</param>
+        /// <exception cref="ArgumentException">Eccezione lanciata quando il comando passato non è valido</exception>
+        public RestoreFileCommand(Command cmd) : base()
+        {
+            if ((cmd == null) || (cmd.kmd != CmdType.restoreFile))
+                throw new ArgumentException("Il comando passato è vuoto oppure non di tipo restoreFile");
+
+            // Salvo l'auth token
+            this.AuthToken = cmd.AuthToken;
+
+            // Imposto il tipo di comando
+            this.kmd = CmdType.restoreFile;
+
+            // Estraggo i campi
+            this.extractField(cmd.Payload);
+        }
+
+
+        /// <summary>
+        /// Estraggo il valore dei campi e lo vado a salvare direttamente nelle proprietà
+        /// </summary>
+        private void extractField(string payloadP)
+        {
+            char[] splitChar = new char[] { RestoreFileCommand.cmdSeparator };
+            string[] token = payloadP.Split(splitChar, StringSplitOptions.RemoveEmptyEntries);
+
+            // Devo avere SOLO 2 token: [relPath|vesionID]
+            if (token.Length != 2)
+                throw new ArgumentException("Il comando passato non è formattato correttamente");
+
+            // Estraggo i campi
+            this._relFilePath = token[0];
+
+            try
+            {
+                this._versionId = Int32.Parse(token[1]);
+                this.Payload = this.generatePayload();
+            }
+            catch (Exception e)
+            {
+                throw new ArgumentException("Il comando passato non è formattato correttamente (" + e.Message + ")");
+            }
+        }
+
+        /// <summary>
+        /// Genero la stringa da mettere nel Payload formattata secondo specifiche
+        /// </summary>
+        private string generatePayload()
+        {
+            //[path|size|lastModTime]
+            string ret = "";
+
+            ret += this._relFilePath;
+            ret += RestoreFileCommand.cmdSeparator;
+            ret += this._versionId.ToString();
+
+
+            return ret;
+        }
+
+    }
 }
