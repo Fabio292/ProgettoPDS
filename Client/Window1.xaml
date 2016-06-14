@@ -126,9 +126,9 @@
                     </Grid>
 
 
-                    <Label Height="26" Margin="0" Name="link_a_registrazione" Foreground="Black" HorizontalAlignment="Left" VerticalAlignment="Bottom" 
+                    <Label Height="30" Margin="0" Name="link_a_registrazione" Foreground="Black" HorizontalAlignment="Left" VerticalAlignment="Bottom" 
                            Grid.Row="4" Grid.Column="0" Grid.ColumnSpan="2">
-                        <Hyperlink Click="AddAccount" Foreground="#DDDDDD" FontWeight="Bold">Non possiedi un account? Registrati</Hyperlink>
+                        <Hyperlink Click="AddAccount" Foreground="#DDDDDD" FontSize="15" FontWeight="Bold">Non possiedi un account? Registrati</Hyperlink>
                     </Label>
 
                 </Grid>

@@ -1043,7 +1043,6 @@ namespace Client
                     List<VersionInfo> versionList = remoteVersionMap[fileRelPath];
                     foreach (VersionInfo fileVersion in versionList)
                     {
-
                         ListBoxItem lstVersionItem = new ListBoxItem()
                         {
                             Content = "Versione " + fileVersion.versionID.ToString(),
@@ -1093,6 +1092,7 @@ namespace Client
 
         }
 
+
         private void LSTFileVersion_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             try
@@ -1118,8 +1118,23 @@ namespace Client
             }
         }
 
+
         private void BTNRestore_Click(object sender, RoutedEventArgs e)
         {
+            //prendere il file selezionato dall'utente e inviare la richiesta di download al server
+            //(ricevuto il file devo sovrascriverlo)
+            TreeViewItem item = ((TreeViewItem)TRWRestore.SelectedItem);
+            string fileRelPath = item.Tag.ToString();
+
+
+            ListBoxItem itemVersionList = (ListBoxItem)LSTFileVersion.SelectedValue;
+            Logger.Info("valore letto" + itemVersionList.ToString());
+
+
+            //TODO come prendo la fileSize? 
+            //come prendo il numero di versione? (è l'ultimo intero dell'oggetto itemVersionList, scrivo una funzione che lo estrae o c'è un metodo più furbo?)
+            client.requestRestore(fileRelPath, 1000, 1000, authToken);
+
 
         }
         #endregion
