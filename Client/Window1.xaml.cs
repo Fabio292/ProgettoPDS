@@ -1121,19 +1121,25 @@ namespace Client
 
         private void BTNRestore_Click(object sender, RoutedEventArgs e)
         {
-            //prendere il file selezionato dall'utente e inviare la richiesta di download al server
-            //(ricevuto il file devo sovrascriverlo)
-            TreeViewItem item = ((TreeViewItem)TRWRestore.SelectedItem);
-            string fileRelPath = item.Tag.ToString();
+            try
+            {
+                //prendere il file selezionato dall'utente e inviare la richiesta di download al server
+                //(ricevuto il file devo sovrascriverlo)
+                ListBoxItem itemVersionList = (ListBoxItem)LSTFileVersion.SelectedValue;
+                VersionInfo selectedVerionInfo = (VersionInfo)itemVersionList.Tag;
+            
 
+                //Richiedo il file
+                client.requestRestore(selectedVerionInfo.relPath, selectedVerionInfo.versionID, selectedVerionInfo.FileSize, authToken);
 
-            ListBoxItem itemVersionList = (ListBoxItem)LSTFileVersion.SelectedValue;
-            Logger.Info("valore letto" + itemVersionList.ToString());
+            }
+            catch (Exception ex)
+            {
+                StackTrace st = new StackTrace(ex, true);
+                StackFrame sf = Utilis.GetFirstValidFrame(st);
 
-
-            //TODO come prendo la fileSize? 
-            //come prendo il numero di versione? (è l'ultimo intero dell'oggetto itemVersionList, scrivo una funzione che lo estrae o c'è un metodo più furbo?)
-            client.requestRestore(fileRelPath, 1000, 1000, authToken);
+                Logger.Error("[" + Path.GetFileName(sf.GetFileName()) + "(" + sf.GetFileLineNumber() + ")]: " + ex.Message);
+            }
 
 
         }

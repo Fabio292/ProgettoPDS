@@ -300,7 +300,7 @@ namespace Server
             }
             #endregion
 
-            //TODO non conviene inviare un comando in entrambi i casi? altrimenti il client non sa cosa aspettarsi
+
             if(fileAbsPath == "")
             {
                 //File non trovato
@@ -308,6 +308,7 @@ namespace Server
             }
             else
             {
+                ServerListener.sendOk(client);
                 //Invio il file
                 Utilis.SendFile(client, fileAbsPath, fileSize);
             }

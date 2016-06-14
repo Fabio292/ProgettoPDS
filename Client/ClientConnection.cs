@@ -554,13 +554,17 @@ namespace Client
         /// </summary>
         /// <param name="relPath"></param>
         /// <param name="versionId"></param>
-        public void requestRestore(String relPath, int versionId, int fileSize, string authToken) {
+        public void requestRestore(String relPath, int versionId, long fileSize, string authToken) {
             RestoreFileCommand restoreFile = new RestoreFileCommand(relPath, versionId, authToken);
             Utilis.SendCmdSync(conn, restoreFile);
 
+            Command resp = Utilis.GetCmdSync(conn);
 
-            //TODO testare la risposta del server -> attualmente risponde con un comando di errore o direttamente con il file
-            //non è meglio se il server risponde sempre con un comando e nel caso di file trovato segua poi l'invio del file?
+            if(resp.kmd != CmdType.ok)
+            {
+                throw new Exception("Ricevuto errore: " + resp.Payload);
+            }
+            
 
             if (File.Exists(Settings.SynchPath + relPath))
             {
