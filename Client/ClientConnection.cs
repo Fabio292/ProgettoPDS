@@ -378,14 +378,54 @@ namespace Client
 
                 return xmlRootServer;                
             }
-            catch (Exception e)
+            //catch (Exception e)
+            //{
+            //    StackTrace st = new StackTrace(e, true);
+            //    StackFrame sf = Utilis.GetFirstValidFrame(st);
+
+            //    Logger.Error("[" + Path.GetFileName(sf.GetFileName()) + "(" + sf.GetFileLineNumber() + ")]: " + e.Message);
+
+            //    throw e;
+            //}
+            finally
             {
-                StackTrace st = new StackTrace(e, true);
-                StackFrame sf = Utilis.GetFirstValidFrame(st);
+                this.disconnect();
+            }
+        }
 
-                Logger.Error("[" + Path.GetFileName(sf.GetFileName()) + "(" + sf.GetFileLineNumber() + ")]: " + e.Message);
+        /// <summary>
+        /// invia la richiesta di restore del file selezionato al server
+        /// </summary>
+        /// <param name="relPath"></param>
+        /// <param name="versionId"></param>
+        public void ClientRestore(String relPath, int versionId, long fileSize, string authToken)
+        {
+            try
+            {
+                this.connect();
 
-                throw e;
+                RestoreFileCommand restoreFile = new RestoreFileCommand(relPath, versionId, authToken);
+                Utilis.SendCmdSync(conn, restoreFile);
+
+                Command resp = Utilis.GetCmdSync(conn);
+
+                if (resp.kmd != CmdType.ok)
+                {
+                    throw new Exception("Ricevuto errore: " + resp.Payload);
+                }
+
+                Logger.Debug("[RESTORE] ricevuto ok");
+
+                string destPath = Utilis.RelativeToAbsPath(relPath, Settings.SynchPath);
+
+                if (File.Exists(destPath))
+                {
+                    File.Delete(destPath);
+                }
+
+                Utilis.GetFile(conn, destPath, fileSize);
+
+                Logger.Debug("[RESTORE] ricevuto file");
             }
             finally
             {
@@ -548,30 +588,5 @@ namespace Client
             Utilis.SendCmdSync(client, cmd);
         }
 
-
-        /// <summary>
-        /// invia la richiesta di restore del file selezionato al server
-        /// </summary>
-        /// <param name="relPath"></param>
-        /// <param name="versionId"></param>
-        public void requestRestore(String relPath, int versionId, long fileSize, string authToken) {
-            RestoreFileCommand restoreFile = new RestoreFileCommand(relPath, versionId, authToken);
-            Utilis.SendCmdSync(conn, restoreFile);
-
-            Command resp = Utilis.GetCmdSync(conn);
-
-            if(resp.kmd != CmdType.ok)
-            {
-                throw new Exception("Ricevuto errore: " + resp.Payload);
-            }
-            
-
-            if (File.Exists(Settings.SynchPath + relPath))
-            {
-                File.Delete(Settings.SynchPath + relPath);
-            }
-
-            Utilis.GetFile(conn, relPath, fileSize);
-        }
     }
 }

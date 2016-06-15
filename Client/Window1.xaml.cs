@@ -933,7 +933,6 @@ namespace Client
 
             GotoRestore();
 
-
             try
             {
                 TRWRestore.Items.Clear();
@@ -943,8 +942,6 @@ namespace Client
                 XElement serverRoot = client.ClientBeginRestore(XMLInstance, authToken);
                 TreeViewItem trwRoot = xmlToTreeViewRestore(serverRoot, "");
                 trwRoot.Header = Path.GetFileName(Settings.SynchPath);
-
-
 
                 TRWRestore.Items.Add(trwRoot);
 
@@ -958,6 +955,11 @@ namespace Client
             catch (Exception ex)
             {
                 System.Windows.MessageBox.Show(ex.Message, "Errore", MessageBoxButton.OK, MessageBoxImage.Error);
+
+                StackTrace st = new StackTrace(ex, true);
+                StackFrame sf = Utilis.GetFirstValidFrame(st);
+
+                Logger.Error("[" + Path.GetFileName(sf.GetFileName()) + "(" + sf.GetFileLineNumber() + ")]: " + ex.Message);
             }            
 
         }
@@ -998,6 +1000,7 @@ namespace Client
                     v.FileSize = Convert.ToInt64(version.Attribute(XmlManager.FileAttributeSize).Value);
                     v.Md5 = version.Attribute(XmlManager.FileAttributeChecksum).Value;
                     v.versionID = Convert.ToInt32(version.Attribute(XmlManager.VersionAttributeID).Value);
+                    v.relPath = filePath;
 
                     // Aggiungo alla lista 
                     versionList.Add(v);
@@ -1130,7 +1133,7 @@ namespace Client
             
 
                 //Richiedo il file
-                client.requestRestore(selectedVerionInfo.relPath, selectedVerionInfo.versionID, selectedVerionInfo.FileSize, authToken);
+                client.ClientRestore(selectedVerionInfo.relPath, selectedVerionInfo.versionID, selectedVerionInfo.FileSize, authToken);
 
             }
             catch (Exception ex)
@@ -1139,6 +1142,8 @@ namespace Client
                 StackFrame sf = Utilis.GetFirstValidFrame(st);
 
                 Logger.Error("[" + Path.GetFileName(sf.GetFileName()) + "(" + sf.GetFileLineNumber() + ")]: " + ex.Message);
+
+                System.Windows.MessageBox.Show(ex.Message, "Errore Restore", MessageBoxButton.OK, MessageBoxImage.Error);
             }
 
 
