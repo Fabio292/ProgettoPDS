@@ -99,7 +99,7 @@
 
                         <Label x:Name="savedPwdpwd" Content="Password" Grid.Column="1" Grid.Row="1" HorizontalAlignment="Stretch" TextBlock.Foreground="#DDDDDD" FontSize="15" FontWeight="Bold" Height="30" VerticalAlignment="center" />
                         <Border CornerRadius="5" BorderThickness="1" Grid.Column="0" Grid.Row="2" HorizontalAlignment="Stretch" Background="White" Height="30" BorderBrush="#DDDDDD" Margin="0,0,0,0" VerticalAlignment="center">
-                            <TextBox  x:Name="TXTPasswordInserita" Background="Transparent" BorderThickness="0"  HorizontalAlignment="Stretch" FontSize="15" FontWeight="Bold" VerticalAlignment="Center" />
+                            <PasswordBox  x:Name="TXTPasswordInserita" Background="Transparent" BorderThickness="0"  HorizontalAlignment="Stretch" FontSize="15" FontWeight="Bold" VerticalAlignment="Center" />
                         </Border>
                         <CheckBox x:Name="ChkRicorda" Grid.Column="1" Grid.Row="3" Content="Ricordami" HorizontalAlignment="Left" TextBlock.Foreground="#DDDDDD" FontSize="12" FontWeight="Bold" Height="30" Width="100"/>
 
@@ -184,7 +184,7 @@
 
                         <Label x:Name="pwd_reg" Content="Password" Grid.Column="0" Grid.Row="1" HorizontalAlignment="Stretch" TextBlock.Foreground="#DDDDDD" FontSize="15" FontWeight="Bold" Height="30" />
                         <Border CornerRadius="5" BorderThickness="1" Grid.Column="0" Grid.Row="2" HorizontalAlignment="Stretch" Background="White" Height="30" BorderBrush="#DDDDDD" VerticalAlignment="Center">
-                            <TextBox x:Name="TXTPwdReg" Background="Transparent" BorderThickness="0"  HorizontalAlignment="Stretch" FontSize="15" FontWeight="Bold" VerticalAlignment="Center" />
+                            <PasswordBox x:Name="TXTPwdReg" Background="Transparent" BorderThickness="0"  HorizontalAlignment="Stretch" FontSize="15" FontWeight="Bold" VerticalAlignment="Center" />
                         </Border>
 
                     </Grid>
@@ -202,7 +202,7 @@
 
                         <Label x:Name="ripetipwd" Content="Ripeti password" Grid.Column="0" Grid.Row="1" HorizontalAlignment="Stretch" TextBlock.Foreground="#DDDDDD" FontSize="15" FontWeight="Bold" Height="30" />
                         <Border CornerRadius="5" BorderThickness="1" Grid.Column="0" Grid.Row="2" HorizontalAlignment="Stretch" Background="White" Height="30" BorderBrush="#DDDDDD" VerticalAlignment="Center">
-                            <TextBox x:Name="TXTPwdRepReg" Background="Transparent" BorderThickness="0"  HorizontalAlignment="Stretch" FontSize="15" FontWeight="Bold" VerticalAlignment="Center" />
+                            <PasswordBox x:Name="TXTPwdRepReg" Background="Transparent" BorderThickness="0"  HorizontalAlignment="Stretch" FontSize="15" FontWeight="Bold" VerticalAlignment="Center" />
                         </Border>
                     </Grid>
 
@@ -251,9 +251,9 @@
 
                             <Button x:Name="BtnSettings" Content="{StaticResource settingsBTN}" Grid.Column="0" Grid.Row="0" Height="55" Width="100" Margin="0,20,0,0"  Background="#DDDDDD" Click="BtnSettings_Click"/>
                             <Button x:Name="BtnStoria" Content="Restore" Grid.Column="0" Grid.Row="1" FontSize="14" Height="55" FontWeight="Bold" Width="100" Margin="0,20,0,0"  Background="#DDDDDD" Click="BtnStoria_Click"/>
-                            <Button x:Name="BtnStartSynch" Content="Avvia Synch" Grid.Column="0" Grid.Row="2" FontSize="14" FontWeight="Bold" Height="55" Width="100" Margin="0,20,0,0" Background="#DDDDDD"  Click="BtnStartSynch_Click"/>
-                            <Button x:Name="BtnStartTimer" Content="Start Timer" Grid.Column="0" Grid.Row="3" FontSize="14" FontWeight="Bold" Height="55" Width="100" Margin="0,20,0,0" Background="#DDDDDD" Click="BtnStartTimer_Click" />
-                            <Button x:Name="BtnStopTimer" Content="Stop Timer" Grid.Column="0" Grid.Row="4" FontSize="14" FontWeight="Bold" Height="55" Width="100" Margin="0,20,0,0" Background="#DDDDDD" Click="BtnStopTimer_Click" />
+                            <Button x:Name="BtnStartSynch" Content="Forza Synch" Grid.Column="0" Grid.Row="2" FontSize="14" FontWeight="Bold" Height="55" Width="100" Margin="0,20,0,0" Background="#DDDDDD"  Click="BtnStartSynch_Click"/>
+                            <Button x:Name="BtnStartTimer" Content="Start Timer" Grid.Column="0" Grid.Row="3" FontSize="14" FontWeight="Bold" Height="55" Width="100" Margin="0,20,0,0" Background="#DDDDDD" Visibility="Hidden" Click="BtnStartTimer_Click" />
+                            <Button x:Name="BtnStopTimer" Content="Stop Timer" Grid.Column="0" Grid.Row="4" FontSize="14" FontWeight="Bold" Height="55" Width="100" Margin="0,20,0,0" Background="#DDDDDD" Visibility="Hidden" Click="BtnStopTimer_Click" />
                             
 
 
@@ -331,9 +331,9 @@
                                 </Grid.RowDefinitions>
 
                                 <Label x:Name="LBLRemoteDate" Grid.Column="1" Grid.Row="1" Content="Ultima Modifica:" Padding="0" TextBlock.Foreground="#DDDDDD" FontSize="15" FontWeight="Bold" Height="20"/>
-                                <Label x:Name="LBLRemoteDateValue" Grid.Column="1" Grid.Row="2" Content="" Padding="0" TextBlock.Foreground="#DDDDDD" FontSize="15"/>
+                                <Label x:Name="LBLRemoteDateValue" Grid.Column="1" Grid.Row="2" Content="" Padding="0" TextBlock.Foreground="white" FontSize="15"/>
                                 <Label x:Name="LBLRemoteSize" Grid.Column="1" Grid.Row="3" Content="Dimensione:" Padding="0" TextBlock.Foreground="#DDDDDD" FontSize="15" FontWeight="Bold" Height="20"/>
-                                <Label x:Name="LBLRemoteSizeValue" Grid.Column="1" Grid.Row="4" Content="" Padding="0" TextBlock.Foreground="#DDDDDD" FontSize="15"/>
+                                <Label x:Name="LBLRemoteSizeValue" Grid.Column="1" Grid.Row="4" Content="" Padding="0" TextBlock.Foreground="white" FontSize="15"/>
                                 <!--<Label x:Name="LBLRemoteMd5" Grid.Column="1" Grid.Row="5" Content="Digest:" Padding="0"/>
                                 <Label x:Name="LBLRemoteMd5Value" Grid.Column="1" Grid.Row="6" Content="63068245783102541109255561453874" Padding="0" FontSize="10"/>-->
 
@@ -359,9 +359,9 @@
                                 </Grid.RowDefinitions>
 
                                 <Label x:Name="LBLLocalDate" Grid.Column="1" Grid.Row="1" Content="Ultima Modifica:" Padding="0" TextBlock.Foreground="#DDDDDD" FontSize="15" FontWeight="Bold" Height="20"/>
-                                <Label x:Name="LBLLocalDateValue" Grid.Column="1" Grid.Row="2" Content="" Padding="0" TextBlock.Foreground="#DDDDDD" FontSize="15"/>
+                                <Label x:Name="LBLLocalDateValue" Grid.Column="1" Grid.Row="2" Content="" Padding="0" TextBlock.Foreground="white" FontSize="15"/>
                                 <Label x:Name="LBLLocalSize" Grid.Column="1" Grid.Row="3" Content="Dimensione:" Padding="0" TextBlock.Foreground="#DDDDDD" FontSize="15" FontWeight="Bold" Height="20"/>
-                                <Label x:Name="LBLLocalSizeValue" Grid.Column="1" Grid.Row="4" Content="" Padding="0" TextBlock.Foreground="#DDDDDD" FontSize="15"/>
+                                <Label x:Name="LBLLocalSizeValue" Grid.Column="1" Grid.Row="4" Content="" Padding="0" TextBlock.Foreground="white" FontSize="15"/>
                                 <!--<Label x:Name="LBLLocalMd5" Grid.Column="1" Grid.Row="5" Content="Digest:" Padding="0"/>
                                 <Label x:Name="LBLLocalMd5Value" Grid.Column="1" Grid.Row="6" Content="63068245783102541109255561453874" Padding="0"/>-->
 

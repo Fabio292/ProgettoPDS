@@ -111,7 +111,7 @@ namespace Client
                     string savedPwd = sr.ReadLine();
 
                     TXTUsernameInserito.Text = savedUsername;
-                    TXTPasswordInserita.Text = savedPwd;
+                    TXTPasswordInserita.Password = savedPwd;
                 }
 
                 ChkRicorda.IsChecked = true;
@@ -632,7 +632,7 @@ namespace Client
             try
             {
                 username = TXTUsernameInserito.Text;
-                pwd = TXTPasswordInserita.Text;
+                pwd = TXTPasswordInserita.Password;
 
                 int usnLen = username.Length;
                 if (usnLen < Constants.MinUsernameLength || usnLen > Constants.MaxUsernameLength)
@@ -749,8 +749,8 @@ namespace Client
             try
             {
                 username = TXTusernameReg.Text;
-                password = TXTPwdReg.Text;
-                passwordRep = TXTPwdRepReg.Text;
+                password = TXTPwdReg.Password;
+                passwordRep = TXTPwdRepReg.Password;
 
 
                 int usnLen = username.Length;
@@ -769,8 +769,8 @@ namespace Client
                     Logger.Error("Le due password non corrispondono");
                     System.Windows.MessageBox.Show("Le due password non corrispondono");
                     //cancello i due campi
-                    TXTPwdReg.Text= "";
-                    TXTPwdRepReg.Text= "";
+                    TXTPwdReg.Password= "";
+                    TXTPwdRepReg.Password= "";
                     return;
                 }
 
