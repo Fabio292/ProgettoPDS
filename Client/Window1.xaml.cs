@@ -610,6 +610,11 @@ namespace Client
             GotoSettings();
         }
 
+        private void BTNRegToLogin_Click(object sender, RoutedEventArgs e)
+        {
+            GotoLogin();
+        }
+
         /// <summary>
         /// funzione chiamata al premere del link "Non possiedi un account? Registrati", crea il nuovo account e redirezione su MainWindow
         /// </summary>
@@ -1194,7 +1199,7 @@ namespace Client
 
 
         #endregion
-
+        
     }
 
     public class VersionInfo

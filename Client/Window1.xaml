@@ -213,6 +213,8 @@
                             <ColumnDefinition Width="20" />
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="20" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="20" />
                         </Grid.ColumnDefinitions>
 
                         <Grid.RowDefinitions>
@@ -223,6 +225,7 @@
 
                         <Button x:Name="BTNRegistration" Content="Registrati" Grid.Column="1" Grid.Row="1" HorizontalAlignment="Center" FontSize="14" FontWeight="Bold" Height="55" Width="100" VerticalAlignment="bottom" Background="#DDDDDD"  Click="BTNRegistration_Click"/>
                         <Button x:Name="BTNRegToSettings" Content="{StaticResource settingsBTN}" Grid.Column="3" Grid.Row="1" Height="55" Width="100" VerticalAlignment="Bottom" Background="#DDDDDD" Click="BTNRegToSettings_Click" />
+                        <Button x:Name="BTNRegToLogin" Content="Indietro" Grid.Column="5" Grid.Row="1" FontSize="14" FontWeight="Bold" Height="55" Width="100" VerticalAlignment="Bottom" Background="#DDDDDD" Click="BTNRegToLogin_Click" />
                     </Grid>
 
 
