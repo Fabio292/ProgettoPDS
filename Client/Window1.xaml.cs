@@ -75,11 +75,13 @@ namespace Client
         private void Window_Loaded(object sender, RoutedEventArgs e)
         {
             client = new ClientConnection();
-            Logger.log("");
-            Logger.log("--------------------------------------");
-            Logger.log("|          AVVIO CLIENT              |");
-            Logger.log("--------------------------------------");
-            Logger.log("");
+            Logger.StartLog();
+
+            Logger.Info("");
+            Logger.Info("--------------------------------------");
+            Logger.Info("|          AVVIO CLIENT              |");
+            Logger.Info("--------------------------------------");
+            Logger.Info("");
 
             ConfigureWatcher();
             ConfigureTimer();
@@ -127,6 +129,8 @@ namespace Client
                 e.Cancel = true;
                 this.WindowState = WindowState.Minimized;
             }
+
+            Logger.StopLog();
         
         }
 
@@ -146,11 +150,11 @@ namespace Client
                 Monitor.Pulse(_fswLocker);
             }
 
-            Logger.log("");
-            Logger.log("--------------------------------------");
-            Logger.log("|        CHIUSURA CLIENT             |");
-            Logger.log("--------------------------------------");
-            Logger.log("");
+            Logger.Info("");
+            Logger.Info("--------------------------------------");
+            Logger.Info("|        CHIUSURA CLIENT             |");
+            Logger.Info("--------------------------------------");
+            Logger.Info("");
 
             userRequestShutdown = true;
             this.Close();
@@ -403,48 +407,7 @@ namespace Client
                     // Sveglio il thread
                     Monitor.Pulse(_fswLocker);
                 }
-
-                //if (e.ChangeType == WatcherChangeTypes.Changed)
-                //{
-                //    // IGNORO le notifiche di tipo change su directory
-                //    if (Utilis.IsDirectory(e.FullPath))
-                //        return;
-                //
-                //    Logger.Debug("Changed FILE " + e.FullPath);
-                //    //FileAttributeHelper fileAttr = new FileAttributeHelper(e.FullPath);
-                //    //XMLInstance.RefreshFile(fileAttr);
-                //    //Thread.Sleep(Utilis.rndGen.Next(1, 5));
-                //
-                //}
-                //else if (e.ChangeType == WatcherChangeTypes.Created)
-                //{
-                //    if (Utilis.IsDirectory(e.FullPath))
-                //    {
-                //        Logger.Debug("Created DIR " + e.FullPath);
-                //        //XMLInstance.CreateDirectory(e.FullPath);
-                //        //Thread.Sleep(Utilis.rndGen.Next(1, 5));
-                //    }
-                //    else
-                //    {
-                //        Logger.Debug("Created FILE " + e.FullPath);
-                //        //FileAttributeHelper fileAttr = new FileAttributeHelper(e.FullPath);
-                //        //XMLInstance.CreateFile(fileAttr);
-                //        //Thread.Sleep(Utilis.rndGen.Next(1, 5));
-                //
-                //        // Se un file è stato creato dovrei rimuoverlo dalla lista
-                //        //deletedFilesList.Remove(Utilis.AbsToRelativePath(e.FullPath, Settings.SynchPath));
-                //    }
-                //   
-                //}
-                //else if (e.ChangeType == WatcherChangeTypes.Deleted)
-                //{
-                //    // Non posso sapere se è file o directory
-                //    Logger.Info("DELETED  " + e.FullPath);
-                //    //XMLInstance.DeleteElement(e.FullPath, deletedFilesList);
-                //    //Thread.Sleep(Utilis.rndGen.Next(1, 5));
-                //}
-
-
+                
             }
             catch (Exception ex)
             {

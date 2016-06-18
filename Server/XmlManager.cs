@@ -68,12 +68,11 @@ namespace Server
             XElement root = new XElement(XmlManager.DirectoryElementName);
             root.SetAttributeValue(XmlManager.DirectoryAttributeName, "_");
 
-
             using (SQLiteCommand sqlCmd = conn.CreateCommand())
             {
-                sqlCmd.CommandText = @"SELECT PathClient, MD5, LastModTime, Size FROM Versioni WHERE UID = @_UID AND VersionID = @_versionID AND Deleted = 0;";
+                sqlCmd.CommandText = @"SELECT PathClient, MD5, LastModTime, Size FROM Versioni WHERE UID = @_UID AND LastVersion = 1 AND Deleted = 0;";
                 sqlCmd.Parameters.AddWithValue("@_UID", UID);
-                sqlCmd.Parameters.AddWithValue("@_versionID", versionID);
+                //sqlCmd.Parameters.AddWithValue("@_versionID", versionID);
 
                 using (SQLiteDataReader reader = sqlCmd.ExecuteReader())
                 {
@@ -92,7 +91,7 @@ namespace Server
 
                         string fname = Path.GetFileName(relPath);
                         string[] dirPath = Path.GetDirectoryName(relPath).Split(Constants.PathSeparator.ToCharArray(), StringSplitOptions.RemoveEmptyEntries);
-                        
+
 
                         // Cerco la dir in cui va il file e se non c'e la creo
                         XElement dir = this.getDirectoryElement(Path.GetDirectoryName(relPath), root);
@@ -142,6 +141,88 @@ namespace Server
 
             this._xmlDoc = new XDocument(root);
         }
+
+        #region OLD
+        //public XmlManager(SQLiteConnection conn, int UID, int versionID)
+        //{
+        //    XElement root = new XElement(XmlManager.DirectoryElementName);
+        //    root.SetAttributeValue(XmlManager.DirectoryAttributeName, "_");
+
+
+        //    using (SQLiteCommand sqlCmd = conn.CreateCommand())
+        //    {
+        //        sqlCmd.CommandText = @"SELECT PathClient, MD5, LastModTime, Size FROM Versioni WHERE UID = @_UID AND VersionID = @_versionID AND Deleted = 0;";
+        //        sqlCmd.Parameters.AddWithValue("@_UID", UID);
+        //        sqlCmd.Parameters.AddWithValue("@_versionID", versionID);
+
+        //        using (SQLiteDataReader reader = sqlCmd.ExecuteReader())
+        //        {
+        //            string relPath;
+        //            string md5;
+        //            DateTime lastModTime;
+        //            int fileSize;
+
+        //            while (reader.Read())
+        //            {
+        //                // Analizzo ogni elemento ricordando che dal DB tiro fuori SOLO FILE
+        //                relPath = reader.GetString(0);
+        //                md5 = reader.GetString(1);
+        //                lastModTime = reader.GetDateTime(2);
+        //                fileSize = reader.GetInt32(3);
+
+        //                string fname = Path.GetFileName(relPath);
+        //                string[] dirPath = Path.GetDirectoryName(relPath).Split(Constants.PathSeparator.ToCharArray(), StringSplitOptions.RemoveEmptyEntries);
+
+
+        //                // Cerco la dir in cui va il file e se non c'e la creo
+        //                XElement dir = this.getDirectoryElement(Path.GetDirectoryName(relPath), root);
+        //                if (dir == null)
+        //                {
+        //                    #region ricerca e creazione parziale
+        //                    dir = root;
+        //                    bool create = false;
+        //                    foreach (var item in dirPath)
+        //                    {
+        //                        if (create == false)
+        //                        {
+        //                            // sto ancora cercando
+        //                            var dirAus = this.getDirectoryElement(item, dir);
+        //                            if (dirAus != null)
+        //                            {
+        //                                dir = dirAus;
+        //                                continue;
+        //                            }
+        //                            else
+        //                                create = true;
+        //                        }
+
+        //                        XElement newDir = new XElement(XmlManager.DirectoryElementName);
+        //                        newDir.SetAttributeValue(XmlManager.DirectoryAttributeName, item);
+
+        //                        dir.Add(newDir);
+        //                        dir = newDir;
+        //                    }
+        //                    #endregion
+        //                }
+
+        //                // A questo punto 'dir' sarà la cartella in cui ci andrà il file
+        //                XElement fileElement = new XElement(XmlManager.FileElementName);
+
+        //                fileElement.SetAttributeValue(FileAttributeName, fname);
+        //                fileElement.SetAttributeValue(FileAttributeLastModTime, lastModTime.ToString(Constants.XmlDateFormat));
+        //                fileElement.SetAttributeValue(FileAttributeSize, fileSize.ToString());
+        //                fileElement.SetAttributeValue(FileAttributeChecksum, md5);
+
+        //                dir.Add(fileElement);
+
+        //            }
+
+        //        }
+        //    }
+
+        //    this._xmlDoc = new XDocument(root);
+        //}
+        #endregion
 
         /// <summary>
         /// Genero un xml andando a leggere i dati dal DB con versioni
@@ -424,11 +505,18 @@ namespace Server
             // Ordinare le cose
             XmlManager.sortElement(root);
 
-            //string outPath = Constants.XmlSavePath + Constants.PathSeparator + "S_DIGEST.xml";
-            //using (StreamWriter output = new StreamWriter(outPath))
-            //{
-            //    output.Write(doc.ToString());
-            //}
+            try
+            {
+                string outPath = Constants.XmlSavePath + Constants.PathSeparator + "S_DIGEST.xml";
+                using (StreamWriter output = new StreamWriter(outPath))
+                {
+                    output.Write(doc.ToString());
+                }
+            }
+            catch (Exception)
+            {
+                Logger.Error("DIAMINE");
+            }
 
             return Utilis.Md5String(doc.ToString());
         }

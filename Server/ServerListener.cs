@@ -264,61 +264,94 @@ namespace Server
             }
             #endregion
 
-            #region recupero il file da DB
+
             string fileAbsPath = "";
             long fileSize = 0;
             using (SQLiteConnection connessione = new SQLiteConnection(DB.GetConnectionString()))
             {
                 connessione.Open();
-                using (SQLiteCommand sqlCmd = connessione.CreateCommand())
+
+                using (SQLiteTransaction tr = connessione.BeginTransaction())
                 {
-                    sqlCmd.CommandText = @"SELECT PathServer, size FROM Versioni WHERE UID = @_UID AND PathClient = @_clientPath AND VersionID = @_versionID";
-                    sqlCmd.Parameters.AddWithValue("@_UID", UID);
-                    sqlCmd.Parameters.AddWithValue("@_clientPath", restoreCmd.RelFilePath);
-                    sqlCmd.Parameters.AddWithValue("@_versionID", restoreCmd.VersionID);
-
-                    using (SQLiteDataReader reader = sqlCmd.ExecuteReader())
+                    #region Recupero le info dal DB
+                    using (SQLiteCommand sqlCmd = connessione.CreateCommand())
                     {
-                        try
-                        {
-                            reader.Read();
-                            fileAbsPath = reader.GetString(0);
-                            fileSize = reader.GetInt64(1);
+                        sqlCmd.CommandText = @"SELECT PathServer, size FROM Versioni WHERE UID = @_UID AND PathClient = @_clientPath AND VersionID = @_versionID";
+                        sqlCmd.Parameters.AddWithValue("@_UID", UID);
+                        sqlCmd.Parameters.AddWithValue("@_clientPath", restoreCmd.RelFilePath);
+                        sqlCmd.Parameters.AddWithValue("@_versionID", restoreCmd.VersionID);
 
-                            Logger.Info("Restore file: " + restoreCmd.RelFilePath + " size: " + fileSize);
-                        }
-                        catch (Exception)
+                        using (SQLiteDataReader reader = sqlCmd.ExecuteReader())
                         {
-                            fileAbsPath = "";
-                            fileSize = 0;
-                        }
+                            try
+                            {
+                                reader.Read();
+                                fileAbsPath = reader.GetString(0);
+                                fileSize = reader.GetInt64(1);
 
+                                Logger.Info("Restore file: " + restoreCmd.RelFilePath + " size: " + fileSize);
+                            }
+                            catch (Exception)
+                            {
+                                fileAbsPath = "";
+                                fileSize = 0;
+                            }
+                        }
+                    }
+                    #endregion
+
+                    #region Invio il file
+                    if (fileAbsPath == "")
+                    {
+                        //File non trovato
+                        ServerListener.sendError(client, ErrorCode.fileNotFound);
+                        return;
+                    }
+                    else
+                    {
+                        ServerListener.sendOk(client);
+                        //Invio il file
+                        Utilis.SendFile(client, fileAbsPath, fileSize);
+                    }
+                    #endregion
+
+                    #region Aggiorno il DB
+                    // Rimuovo la vecchia LAST VERSION
+                    using (SQLiteCommand sqlCmd = connessione.CreateCommand())
+                    {
+                        sqlCmd.CommandText = @" UPDATE Versioni SET LastVersion = @_lastV
+                                            WHERE UID = @_UID AND PathClient = @_clientPath";
+                        sqlCmd.Parameters.AddWithValue("@_lastV", false);
+                        sqlCmd.Parameters.AddWithValue("@_UID", UID);
+                        sqlCmd.Parameters.AddWithValue("@_clientPath", restoreCmd.RelFilePath);
+
+                        sqlCmd.ExecuteNonQuery();
 
                     }
 
+                    // Aggiungo la nuova LAST VERSION
+                    using (SQLiteCommand sqlCmd = connessione.CreateCommand())
+                    {
+                        sqlCmd.CommandText = @" UPDATE Versioni SET LastVersion = @_lastV, Deleted = @_deleted 
+                                            WHERE UID = @_UID AND PathClient = @_clientPath AND VersionID = @_versionID";
+                        sqlCmd.Parameters.AddWithValue("@_lastV", true);
+                        sqlCmd.Parameters.AddWithValue("@_deleted", false);
+                        sqlCmd.Parameters.AddWithValue("@_UID", UID);
+                        sqlCmd.Parameters.AddWithValue("@_clientPath", restoreCmd.RelFilePath);
+                        sqlCmd.Parameters.AddWithValue("@_versionID", restoreCmd.VersionID);
+
+                        if (sqlCmd.ExecuteNonQuery() != 1)
+                            throw new Exception("ClientRestore: Impossibile effettuare l'update B");
+
+                    }
+                    #endregion
+
+                    tr.Commit();
                 }
             }
-            #endregion
-
-            //TODO 
-            /*
-
-            aprire una transazione, dopo l'invio se è andato tutto bene devo mettere per quella versione deleted = 0
-
-            */
 
 
-            if(fileAbsPath == "")
-            {
-                //File non trovato
-                ServerListener.sendError(client, ErrorCode.fileNotFound);
-            }
-            else
-            {
-                ServerListener.sendOk(client);
-                //Invio il file
-                Utilis.SendFile(client, fileAbsPath, fileSize);
-            }
+
         }
 
         #region Gestione utente

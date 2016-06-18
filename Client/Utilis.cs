@@ -416,7 +416,7 @@ namespace Client
             }
             catch (Exception e)
             {
-                Logger.log("Errore ricezione comando: " + e.Message);
+                Logger.Error("Errore ricezione comando: " + e.Message);
                 return null;
             }
         }

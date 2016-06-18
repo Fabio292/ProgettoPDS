@@ -57,7 +57,7 @@ namespace Client
                 conn.Connect(Settings.ServerIP, Settings.ServerPort);
 
                 this.isConnected = true;
-                Logger.log("Aperta connessione verso il server");
+                Logger.Info("Aperta connessione verso il server");
             }
         }
 
