@@ -534,7 +534,7 @@ namespace Client
                                 XMLInstance.CreateFile(fileAttr);
 
                                 //Se un file è stato creato dovrei rimuoverlo dalla lista
-                                deletedFilesList.Remove(Utilis.AbsToRelativePath(element.absPath, Settings.SynchPath));
+                                deletedFilesList.Remove(@"\" + Utilis.AbsToRelativePath(element.absPath, Settings.SynchPath));
                             }
                             break;
 
@@ -1138,7 +1138,7 @@ namespace Client
             
 
                 //Richiedo il file
-                client.ClientRestore(selectedVerionInfo.relPath, selectedVerionInfo.versionID, selectedVerionInfo.FileSize, authToken);
+                client.ClientRestore(selectedVerionInfo, authToken);
 
             }
             catch (Exception ex)

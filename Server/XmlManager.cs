@@ -424,6 +424,12 @@ namespace Server
             // Ordinare le cose
             XmlManager.sortElement(root);
 
+            //string outPath = Constants.XmlSavePath + Constants.PathSeparator + "S_DIGEST.xml";
+            //using (StreamWriter output = new StreamWriter(outPath))
+            //{
+            //    output.Write(doc.ToString());
+            //}
+
             return Utilis.Md5String(doc.ToString());
         }
 

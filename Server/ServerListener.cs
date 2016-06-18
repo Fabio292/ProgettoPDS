@@ -300,6 +300,13 @@ namespace Server
             }
             #endregion
 
+            //TODO 
+            /*
+
+            aprire una transazione, dopo l'invio se è andato tutto bene devo mettere per quella versione deleted = 0
+
+            */
+
 
             if(fileAbsPath == "")
             {

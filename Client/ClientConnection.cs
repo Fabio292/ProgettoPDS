@@ -398,13 +398,13 @@ namespace Client
         /// </summary>
         /// <param name="relPath"></param>
         /// <param name="versionId"></param>
-        public void ClientRestore(String relPath, int versionId, long fileSize, string authToken)
+        public void ClientRestore(VersionInfo fileInfo, string authToken)
         {
             try
             {
                 this.connect();
 
-                RestoreFileCommand restoreFile = new RestoreFileCommand(relPath, versionId, authToken);
+                RestoreFileCommand restoreFile = new RestoreFileCommand(fileInfo.relPath, fileInfo.versionID, authToken);
                 Utilis.SendCmdSync(conn, restoreFile);
 
                 Command resp = Utilis.GetCmdSync(conn);
@@ -416,14 +416,17 @@ namespace Client
 
                 Logger.Debug("[RESTORE] ricevuto ok");
 
-                string destPath = Utilis.RelativeToAbsPath(relPath, Settings.SynchPath);
+                string destPath = Utilis.RelativeToAbsPath(fileInfo.relPath, Settings.SynchPath);
 
                 if (File.Exists(destPath))
                 {
                     File.Delete(destPath);
                 }
 
-                Utilis.GetFile(conn, destPath, fileSize);
+                Utilis.GetFile(conn, destPath, fileInfo.FileSize);
+
+                //imposto la vecchia data di ultima modifica
+                File.SetLastWriteTime(destPath, fileInfo.LastModTime);
 
                 Logger.Debug("[RESTORE] ricevuto file");
             }

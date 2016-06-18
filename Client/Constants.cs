@@ -7,7 +7,7 @@ namespace Client
         /// <summary>
         /// Abilito o meno i LOG di tipo Debug
         /// </summary>
-        public static bool DebugEnabled = false;
+        public static bool DebugEnabled = true;
         
         /// <summary>
         /// Dimensione del campo comando
