@@ -3,13 +3,13 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Net;
-using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Timers;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Forms;
+using System.Windows.Media;
 using System.Xml.Linq;
 using WinForms = System.Windows.Forms;
 
@@ -958,6 +958,7 @@ namespace Client
                 string fileName = fileElement.Attribute(XmlManager.FileAttributeName).Value;
                 string filePath = path + fileName;
 
+                Brush itemColor = Brushes.Black;
                 // Ciclo sulle varie versioni
                 foreach (XElement version in fileElement.Elements(XmlManager.VersionElementName))
                 {
@@ -969,9 +970,13 @@ namespace Client
                     v.Md5 = version.Attribute(XmlManager.FileAttributeChecksum).Value;
                     v.versionID = Convert.ToInt32(version.Attribute(XmlManager.VersionAttributeID).Value);
                     v.relPath = filePath;
+                    v.deleted = Convert.ToBoolean(version.Attribute(XmlManager.VersionAttributeDeleted).Value);
 
                     // Aggiungo alla lista 
                     versionList.Add(v);
+
+                    if (v.deleted == true)
+                        itemColor = Brushes.Red;
                 }
 
                 // Aggiungo alla mappa
@@ -981,8 +986,9 @@ namespace Client
                 {
                     Header = fileName,
                     Tag = filePath,
-
                 };
+
+                newItem.Foreground = itemColor;
 
 
                 ret.Items.Add(newItem);
