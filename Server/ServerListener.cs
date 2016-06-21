@@ -218,7 +218,7 @@ namespace Server
                                 ServerListener.sendError(client, ErrorCode.credentialsNotValid);
                             else
                                 ServerListener.restoreFile(client, k);
-                            exitFlag = false;
+                            exitFlag = true;
                             break;
 
 
