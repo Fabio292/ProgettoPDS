@@ -1109,6 +1109,8 @@ namespace Client
                 //Richiedo il file
                 client.ClientRestore(selectedVerionInfo, authToken);
 
+                System.Windows.MessageBox.Show("File correttamente ripristinato", "File ripristinato", MessageBoxButton.OK, MessageBoxImage.Asterisk);
+
             }
             catch (Exception ex)
             {
