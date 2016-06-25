@@ -152,11 +152,8 @@ namespace Server
         /// </summary>
         private void serveClientSync(TcpClient client, CancellationToken ct)
         {
-
-            //TODO spostare in configurazione
             client.SendTimeout = Constants.SocketTimeout;
             client.ReceiveTimeout = Constants.SocketTimeout;
-
 
             try
             {
@@ -758,7 +755,7 @@ namespace Server
                 if (request.kmd != CmdType.deletedFile)
                 {
                     Logger.Error("Il comando ricevuto non è corretto, atteso <filename>, ricevuto: <" + request.kmd + ">");
-                    return; //TODO notificare l'errore all'utente
+                    return;
                 }
 
                 string relFilePath = request.Payload;
@@ -792,9 +789,7 @@ namespace Server
         /// <param name="UID"></param>
         /// <param name="lastVersionID"></param>
         private static void sendFilesRequested(TcpClient client, SQLiteConnection connection, int UID, ref int lastVersionID)
-        {
-            //TODO riguardare che abbia senso
-            int numFiles = 0;
+        {   int numFiles = 0;
             #region Recupero il versionID
             // Cerco nel DB l'ultimo numero di versione per l'utente
             using (SQLiteCommand sqlCmd = connection.CreateCommand())
@@ -825,7 +820,7 @@ namespace Server
                 Command request = Utilis.GetCmdSync(client);
                 if (request.kmd != CmdType.fileName) {
                     Logger.Error("Il comando ricevuto non è corretto, atteso <filename>, ricevuto: <" + request.kmd + ">");
-                    return; //TODO notificare l'errore all'utente
+                    return;
                 }
 
                 string requestedFile = String.Copy(request.Payload);
@@ -841,7 +836,7 @@ namespace Server
                         if (reader.HasRows == false)
                         {
                             Logger.Error("Il file richiesto non è esistente: " + reader.GetString(0));
-                            return; //TODO notificare l'errore all'utente
+                            return;
                         }
 
                         Utilis.SendFile(client, reader.GetString(0), Convert.ToInt64(reader.GetString(1)));

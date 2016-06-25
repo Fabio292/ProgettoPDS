@@ -48,8 +48,7 @@ namespace Client
             {
                 conn = new TcpClient();
                 this.isConnected = false;
-
-                //TODO setto i parametri della connessione
+                
                 conn.SendTimeout = Constants.SocketTimeout;
                 conn.ReceiveTimeout = Constants.SocketTimeout;
 
@@ -239,7 +238,6 @@ namespace Client
 
                 if (String.Compare(md5XmlCLient, md5XmlServer) == 0)
                 {
-                    //TODO resetto il timer
                     Logger.Info("Le due cartelle sono perfettamente uguali, non e' necessario nessun aggiornamento");
                     this.sendLogout();
                 }
@@ -518,7 +516,6 @@ namespace Client
                     Directory.CreateDirectory(Path.GetDirectoryName(destPath));
 
                 Utilis.GetFile(conn, destPath, fileToGetInfo.FileSize);
-                //TODO modificare la data di ultima modifica del file ?
 
                 Logger.Debug("Ho ricevuto il file: " + fileToGetInfo.relPath);
             }

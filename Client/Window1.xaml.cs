@@ -35,6 +35,7 @@ namespace Client
         private System.Windows.Forms.ContextMenu menu_tray;
         private string authToken = Constants.DefaultAuthToken;
         private TabIndexEnum lastTab = TabIndexEnum.Login;
+        private bool closeBallonShowed = false;
 
         // XML INTERACTION
         private Dictionary<string, List<VersionInfo>> remoteVersionMap = new Dictionary<string, List<VersionInfo>>();
@@ -133,7 +134,11 @@ namespace Client
             {
                 e.Cancel = true;
                 this.WindowState = WindowState.Minimized;
-                MyNotifyIcon.ShowBalloonTip(2000, "App status", "The app is minimized in the System Tray", ToolTipIcon.Info);
+                if(closeBallonShowed == false)
+                {
+                    closeBallonShowed = true;
+                    MyNotifyIcon.ShowBalloonTip(2000, "App status", "The app is minimized in the System Tray", ToolTipIcon.Info);
+                }
             }
 
             Logger.StopLog();

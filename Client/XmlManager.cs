@@ -789,7 +789,7 @@ namespace Client
             }
 
             if(sortLastModTime)
-                ret.Sort((a, b) => a.LastModTime.CompareTo(b.LastModTime)); // TODO TESTARE
+                ret.Sort((a, b) => a.LastModTime.CompareTo(b.LastModTime));
 
             return ret;
         }

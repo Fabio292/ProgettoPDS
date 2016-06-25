@@ -21,8 +21,7 @@ namespace Client
         private static readonly string _defaultIP = "127.0.0.1";
         private static string _IP = "";
         private static readonly string _IPElement = "ServerIP";
-
-        //TODO Colori
+        
 
         private static readonly string settingsFile = "settings.xml";
 
