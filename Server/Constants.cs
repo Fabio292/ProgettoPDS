@@ -28,13 +28,13 @@ namespace Server
         /// <summary>
         /// Percorso di test
         /// </summary>
-        public const string PathServerFile = @"D:\PDSCartellaPDS\ServerBackup";
+        public const string PathServerFile = @"C:\PDSCartellaPDS\ServerBackup";
 
         
         /// <summary>
         /// Percorso dove salvare il file xml
         /// </summary>
-        public const string XmlSavePath = @"D:\PDSCartellaPDS";
+        public const string XmlSavePath = @"C:\PDSCartellaPDS";
         
         /// <summary>
         /// Formato della stringa della data nell'xml

@@ -32,7 +32,7 @@ namespace Client
         /// <summary>
         /// Percorso dove salvare il file xml
         /// </summary>
-        public const string XmlSavePath = @"D:\PDSCartellaPDS";
+        public const string XmlSavePath = @"C:\PDSCartellaPDS";
 
         /// <summary>
         /// Percorso dell'icona

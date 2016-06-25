@@ -6,7 +6,7 @@ namespace Client
 {
     static class Settings
     {
-        public static readonly string _defaultSynchPath = @"D:\PDSCartellaPDS\ClientSide";
+        public static readonly string _defaultSynchPath = @"C:\PDSCartellaPDS\ClientSide";
         private static string _synchPath = "";
         private static readonly string _synchPathElement = "SynchPath";
 

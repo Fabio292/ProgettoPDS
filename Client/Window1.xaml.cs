@@ -83,8 +83,6 @@ namespace Client
             Logger.Info("--------------------------------------");
             Logger.Info("");
 
-            ConfigureWatcher();
-            ConfigureTimer();
 
             // Carico le impostazioni
             TXTpathCartella.Text = Settings.SynchPath;
@@ -92,6 +90,13 @@ namespace Client
             TXTServerIP.Text = Settings.ServerIP;
             TXTServerPort.Text = Settings.ServerPort.ToString();
 
+            if (Directory.Exists(Settings.SynchPath) == false)
+            {
+                Directory.CreateDirectory(Settings.SynchPath);
+            }
+
+            ConfigureWatcher();
+            ConfigureTimer();
             // Genero l'xml in un task che raccoglierò successivamente
             Logger.Info("Lancio xml");
             xmlGenerationTask = Task.Run(() =>
@@ -128,6 +133,7 @@ namespace Client
             {
                 e.Cancel = true;
                 this.WindowState = WindowState.Minimized;
+                MyNotifyIcon.ShowBalloonTip(2000, "App status", "The app is minimized in the System Tray", ToolTipIcon.Info);
             }
 
             Logger.StopLog();
@@ -211,7 +217,7 @@ namespace Client
                 this.ShowInTaskbar = false;
                 //MyNotifyIcon.BalloonTipTitle = "App status";
                 //MyNotifyIcon.BalloonTipText = "The app is minimized in the System Tray";
-                //yNotifyIcon.ShowBalloonTip(2000, "App status", "The app is minimized in the System Tray", ToolTipIcon.Info);
+                //MyNotifyIcon.ShowBalloonTip(2000, "App status", "The app is minimized in the System Tray", ToolTipIcon.Info);
             }
             else if (this.WindowState == WindowState.Normal)
             {
@@ -768,7 +774,6 @@ namespace Client
             
             if(client.ClientRegistration(username, password, ref this.authToken) == true)
             {
-                //TODO benvenuto-tutorial
                 TABControl.SelectedIndex = 2;
             }
             else
@@ -857,7 +862,6 @@ namespace Client
 
             Logger.Info("Nuove impostazioni salvate");
 
-            // TODO rendere effettive le modifiche
             SynchTimer.Interval = Settings.TimerFrequency;
             ResetTimer();            
 
@@ -894,7 +898,6 @@ namespace Client
         /// </summary>
         private async void BtnStoria_Click(object sender, RoutedEventArgs e)
         {
-            ///TODO faccio una Client.synch
             Task synchAwaitableTask = Task.Run(() =>
                 Synch(null)
             );
@@ -1129,6 +1132,10 @@ namespace Client
         #region SYNCH
         private void BtnStartSynch_Click(object sender, RoutedEventArgs e)
         {
+            Dispatcher.Invoke(new Action(() => {
+                printXmlToTreeView();
+            }), System.Windows.Threading.DispatcherPriority.Background, cts.Token);
+
             // Fire and forget
             ThreadPool.QueueUserWorkItem(Synch);
         }
@@ -1144,8 +1151,8 @@ namespace Client
 
                 StopTimer();
                 client.ClientSync(XMLInstance, authToken, deletedFilesList);
-                ResetTimer();                             
-                
+               
+                ResetTimer();       
             }
             catch (Exception ex)
             {

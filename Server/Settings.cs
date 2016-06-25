@@ -6,7 +6,7 @@ namespace Server
 {
     static class Settings
     {
-        private static readonly string _defaultDbPath = @"D:\PDSCartellaPDS\db.sqlite";
+        private static readonly string _defaultDbPath = @"C:\PDSCartellaPDS\db.sqlite";
         private static string _dbPath = "";
         private static readonly string _dbPathElement = "db_path";
 
