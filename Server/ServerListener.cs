@@ -644,8 +644,6 @@ namespace Server
             }
             #endregion
 
-            // Se arrivo a sto punto voglio trasmettere dei file
-            ServerListener.sendOk(client);
 
             #region CONTROLLO INSYNCH
             // Blocco l'utente
@@ -695,6 +693,9 @@ namespace Server
                 }
             }
             #endregion
+
+            // Se arrivo a sto punto voglio fare la synch
+            ServerListener.sendOk(client);
 
             using (SQLiteConnection connessione = new SQLiteConnection(DB.GetConnectionString()))
             {
@@ -838,8 +839,12 @@ namespace Server
                             Logger.Error("Il file richiesto non è esistente: " + reader.GetString(0));
                             return;
                         }
+                        reader.Read();
 
-                        Utilis.SendFile(client, reader.GetString(0), Convert.ToInt64(reader.GetString(1)));
+                        string fname = reader.GetString(0);
+                        long fsize = reader.GetInt64(1);
+
+                        Utilis.SendFile(client, fname, fsize);
 
                     }
 

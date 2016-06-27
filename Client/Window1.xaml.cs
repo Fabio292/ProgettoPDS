@@ -75,56 +75,69 @@ namespace Client
 
         private void Window_Loaded(object sender, RoutedEventArgs e)
         {
-            client = new ClientConnection();
-            Logger.StartLog();
-
-            Logger.Info("");
-            Logger.Info("--------------------------------------");
-            Logger.Info("|          AVVIO CLIENT              |");
-            Logger.Info("--------------------------------------");
-            Logger.Info("");
-
-
-            // Carico le impostazioni
-            TXTpathCartella.Text = Settings.SynchPath;
-            NUDTimerValue.Value = Settings.TimerFrequency / 1000; // Converto i ms in secondi
-            TXTServerIP.Text = Settings.ServerIP;
-            TXTServerPort.Text = Settings.ServerPort.ToString();
-
-            if (Directory.Exists(Settings.SynchPath) == false)
+            try
             {
-                Directory.CreateDirectory(Settings.SynchPath);
-            }
+                client = new ClientConnection();
+                Logger.StartLog();
 
-            ConfigureWatcher();
-            ConfigureTimer();
-            // Genero l'xml in un task che raccoglierò successivamente
-            Logger.Info("Lancio xml");
-            xmlGenerationTask = Task.Run(() =>
-            {
-                XMLInstance = new XmlManager(new DirectoryInfo(Settings.SynchPath));
-            });
+                Logger.Info("");
+                Logger.Info("--------------------------------------");
+                Logger.Info("|          AVVIO CLIENT              |");
+                Logger.Info("--------------------------------------");
+                Logger.Info("");
 
-            // Avvio timer e watcher
-            StartWatcher();
-            StopTimer();//StartTimer();
 
-            // Vado a leggere le credenziali salvate
-            if (File.Exists("credenziali.dat") == true)
-            {
-                
-                using (StreamReader sr = new StreamReader("credenziali.dat"))
+                // Carico le impostazioni
+                TXTpathCartella.Text = Settings.SynchPath;
+                NUDTimerValue.Value = Settings.TimerFrequency / 1000; // Converto i ms in secondi
+                TXTServerIP.Text = Settings.ServerIP;
+                TXTServerPort.Text = Settings.ServerPort.ToString();
+
+                if (Directory.Exists(Settings.SynchPath) == false)
                 {
-                    string savedUsername = sr.ReadLine();
-                    string savedPwd = sr.ReadLine();
-
-                    TXTUsernameInserito.Text = savedUsername;
-                    TXTPasswordInserita.Password = savedPwd;
+                    Directory.CreateDirectory(Settings.SynchPath);
                 }
 
-                ChkRicorda.IsChecked = true;
-            }
+                ConfigureWatcher();
+                ConfigureTimer();
+                // Genero l'xml in un task che raccoglierò successivamente
+                Logger.Info("Lancio xml");
+                xmlGenerationTask = Task.Run(() =>
+                {
+                    XMLInstance = new XmlManager(new DirectoryInfo(Settings.SynchPath));
+                });
 
+                // Avvio timer e watcher
+                StartWatcher();
+                StopTimer();//StartTimer();
+
+                // Vado a leggere le credenziali salvate
+                if (File.Exists("credenziali.dat") == true)
+                {
+
+                    using (StreamReader sr = new StreamReader("credenziali.dat"))
+                    {
+                        string savedUsername = sr.ReadLine();
+                        string savedPwd = sr.ReadLine();
+
+                        TXTUsernameInserito.Text = savedUsername;
+                        TXTPasswordInserita.Password = savedPwd;
+                    }
+
+                    ChkRicorda.IsChecked = true;
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Windows.MessageBox.Show(ex.Message, "Errore Login", MessageBoxButton.OK, MessageBoxImage.Error);
+
+                StackTrace st = new StackTrace(ex, true);
+                StackFrame sf = Utilis.GetFirstValidFrame(st);
+
+                Logger.Error("[" + Path.GetFileName(sf.GetFileName()) + "(" + sf.GetFileLineNumber() + ")]: " + ex.Message);
+                userRequestShutdown = true;
+                this.Close();
+            }
 
         }
 
@@ -406,8 +419,7 @@ namespace Client
         /// -Creato
         /// </summary>
         private void OnChanged(object source, FileSystemEventArgs e)
-        {
-            
+        {            
             try
             {
 
@@ -436,19 +448,25 @@ namespace Client
         {
             try
             {
-                Logger.Debug(e.ChangeType + " " + e.OldFullPath + " -> " + e.FullPath);
-
-                if (Utilis.IsDirectory(e.FullPath))
-                {   // Directory
-                    XMLInstance.RenameDirectory(e.OldName, e.Name);
-                }
-                else
-                {   // File
-                    XMLInstance.RenameFile(e.OldName, e.Name);
-                }
-
-                //XMLInstance.SaveToFile(Constants.XmlSavePath + @"\x2.xml");
                 
+                lock (_fswLocker)
+                {
+                    // Prima cancello
+                    fswEventQueue.Enqueue(new FSWEventListElement() { absPath = e.OldFullPath, ChangeType = WatcherChangeTypes.Deleted });
+
+                    // Sveglio il thread
+                    Monitor.Pulse(_fswLocker);
+                }
+
+                lock (_fswLocker)
+                {
+                    // Poi creo nuovo
+                    fswEventQueue.Enqueue(new FSWEventListElement() { absPath = e.FullPath, ChangeType = WatcherChangeTypes.Created });
+
+                    // Sveglio il thread
+                    Monitor.Pulse(_fswLocker);
+                }
+
 
             }
             catch (Exception ex)
@@ -618,7 +636,7 @@ namespace Client
                 {
                     GotoLogin();
                     Logger.Error("lunghezza username non valida" + username);
-                    System.Windows.MessageBox.Show("lunghezza username non valida" + username);
+                    System.Windows.MessageBox.Show("lunghezza username non valida");
                     return;
                 }
 
@@ -627,7 +645,7 @@ namespace Client
                 {
                     GotoLogin();
                     Logger.Error("lunghezza password non valida" + pwd);
-                    System.Windows.MessageBox.Show("lunghezza password non valida" + pwd);
+                    System.Windows.MessageBox.Show("lunghezza password non valida");
                     return;
                 }
 
@@ -1137,12 +1155,15 @@ namespace Client
         #region SYNCH
         private void BtnStartSynch_Click(object sender, RoutedEventArgs e)
         {
+            // Fire and forget
+            ThreadPool.QueueUserWorkItem(Synch);
+
+            XMLInstance.SaveToFile(Constants.XmlSavePath + @"\x.xml");
+
             Dispatcher.Invoke(new Action(() => {
                 printXmlToTreeView();
             }), System.Windows.Threading.DispatcherPriority.Background, cts.Token);
 
-            // Fire and forget
-            ThreadPool.QueueUserWorkItem(Synch);
         }
 
         /// <summary>

@@ -516,6 +516,8 @@ namespace Client
                     Directory.CreateDirectory(Path.GetDirectoryName(destPath));
 
                 Utilis.GetFile(conn, destPath, fileToGetInfo.FileSize);
+                
+                File.SetLastWriteTime(destPath, fileToGetInfo.LastModTime);
 
                 Logger.Debug("Ho ricevuto il file: " + fileToGetInfo.relPath);
             }

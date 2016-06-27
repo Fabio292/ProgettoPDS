@@ -23,12 +23,7 @@ namespace Client
         /// Dimensione totale del header
         /// </summary>
         public const int HeaderSize = CommandLengthBytes + CommandTypeBytes + AuthTokenLength;
-
-        /// <summary>
-        /// Percorso di test
-        /// </summary>
-        //public const string PathClient = @"D:\PDSCartellaPDS\ClientSide";
-       
+               
         /// <summary>
         /// Percorso dove salvare il file xml
         /// </summary>

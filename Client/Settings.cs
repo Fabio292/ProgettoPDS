@@ -10,7 +10,7 @@ namespace Client
         private static string _synchPath = "";
         private static readonly string _synchPathElement = "SynchPath";
 
-        public static readonly int _defaultTimerFrequency = 60000;
+        public static readonly int _defaultTimerFrequency = 20000;
         private static int _timerFrequency = 0;
         private static readonly string _timerFrequencyElement = "TimerFrequency";
 

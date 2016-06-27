@@ -440,7 +440,7 @@
                                 </Grid.ColumnDefinitions>
 
                                 <Border CornerRadius="5" BorderThickness="1" Grid.Column="0"  Grid.Row="1" HorizontalAlignment="Stretch" Background="White" Height="20" BorderBrush="#DDDDDD" Margin="0,0,0,0" VerticalAlignment="Center">
-                                    <xctk:IntegerUpDown x:Name="NUDTimerValue" Maximum="600" Minimum="30" AllowSpin="True" Background="Transparent" BorderThickness="0" HorizontalAlignment="Stretch" VerticalAlignment="Center" Value="60" />
+                                    <xctk:IntegerUpDown x:Name="NUDTimerValue" Maximum="600" Minimum="10" AllowSpin="True" Background="Transparent" BorderThickness="0" HorizontalAlignment="Stretch" VerticalAlignment="Center" Value="60" />
                                 </Border>
 
                             </Grid>
