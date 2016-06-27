@@ -328,16 +328,16 @@ namespace Client
         private void printXmlToTreeView()
         {
             // Controllo di dover aggiornare la TRW
-            string currentXmlDigest = XMLInstance.XMLDigest();
-            if (currentXmlDigest.CompareTo(lastXmlDigest) == 0)
-            {
-                // XML uguali, ritorno
-                return;
-            }
-            else
-            {
-                lastXmlDigest = currentXmlDigest;
-            }
+            //string currentXmlDigest = XMLInstance.XMLDigest();
+            //if (currentXmlDigest.CompareTo(lastXmlDigest) == 0)
+            //{
+            //    // XML uguali, ritorno
+            //    return;
+            //}
+            //else
+            //{
+            //    lastXmlDigest = currentXmlDigest;
+            //}
 
             XElement root = XMLInstance.GetRoot();
             TRWFolder.Items.Clear();
@@ -383,10 +383,9 @@ namespace Client
             Watcher = new FileSystemWatcher()
             {
                 Path = Settings.SynchPath,
-
-                //NotifyFilter = NotifyFilters.DirectoryName | NotifyFilters.FileName | NotifyFilters.LastWrite,
-                NotifyFilter = NotifyFilters.DirectoryName | NotifyFilters.FileName | NotifyFilters.LastWrite | NotifyFilters.CreationTime,
-                //NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.FileName | NotifyFilters.DirectoryName | NotifyFilters.CreationTime | NotifyFilters.Attributes,
+                
+                //NotifyFilter = NotifyFilters.DirectoryName | NotifyFilters.FileName | NotifyFilters.LastWrite | NotifyFilters.CreationTime,
+                NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.FileName | NotifyFilters.DirectoryName | NotifyFilters.CreationTime | NotifyFilters.Attributes,
                 Filter = "*.*",
                 IncludeSubdirectories = true,
                 InternalBufferSize = 64 * 1024 //max possible buffer size

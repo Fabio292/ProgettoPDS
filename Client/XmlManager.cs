@@ -533,18 +533,18 @@ namespace Client
             // Ordinare le cose
             XmlManager.sortElement(root);
 
-            //try
-            //{
-            //    string outPath = Constants.XmlSavePath + Constants.PathSeparator + "C_DIGEST.xml";
-            //    using (StreamWriter output = new StreamWriter(outPath))
-            //    {
-            //        output.Write(doc.ToString());
-            //    }
-            //}
-            //catch (Exception)
-            //{
-            //    Logger.Error("DIAMINE");
-            //}
+            try
+            {
+                string outPath = Constants.XmlSavePath + Constants.PathSeparator + "C_DIGEST.xml";
+                using (StreamWriter output = new StreamWriter(outPath))
+                {
+                    output.Write(doc.ToString());
+                }
+            }
+            catch (Exception)
+            {
+                Logger.Error("DIAMINE");
+            }
 
             return Utilis.Md5String(doc.ToString());
         }
@@ -583,7 +583,7 @@ namespace Client
         /// <param name="root">La ROOT dell'xml</param>
         private void removeEmpty(XElement root)
         {
-            var subdirsC = root.Elements(DirectoryElementName);
+            var subdirsC = root.Elements(DirectoryElementName).ToList();
 
 
             foreach (var subdir in subdirsC)
