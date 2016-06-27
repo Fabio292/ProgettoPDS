@@ -666,7 +666,8 @@ namespace Server
                             if (reader.GetBoolean(0) == true)
                             {
                                 // Il client è gia in synch
-                                //return; TODO togliere
+                                ServerListener.sendError(client, ErrorCode.userAlreadyInSynch);
+                                return;
                             }
                         }
 

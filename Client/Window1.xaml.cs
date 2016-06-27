@@ -25,7 +25,6 @@ namespace Client
         private FileSystemWatcher Watcher;
         private XmlManager XMLInstance;
 
-        static string lastXmlDigest = "";
         private Task xmlGenerationTask;
 
 
